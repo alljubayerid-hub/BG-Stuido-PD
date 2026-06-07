@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BG Animation Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-base:#0a0a0f;--bg-surface:#111118;--bg-panel:#16161e;--bg-card:#1c1c26;--bg-hover:#22222e;
+    --border:rgba(255,255,255,0.07);--border-accent:rgba(255,255,255,0.15);
+    --text-primary:#f0f0ff;--text-secondary:#8888aa;--text-muted:#44445a;
+    --accent:#7c6fff;--accent-2:#ff6f91;--accent-3:#6fffd4;--accent-4:#ffd96f;
+    --success:#4cffaa;--danger:#ff4c6f;
+    --font-display:'Syne',sans-serif;--font-mono:'DM Mono',monospace;
+    --radius:10px;--panel-w:340px;--header-h:52px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-base);color:var(--text-primary);font-family:var(--font-mono);}
+  .app{display:flex;flex-direction:column;height:100vh;}
+  .header{height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--border);background:var(--bg-surface);flex-shrink:0;z-index:10;}
+  .logo{font-family:var(--font-display);font-weight:800;font-size:17px;letter-spacing:-0.5px;background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap;}
+  .logo span{opacity:0.5;}
+  .nav-pages{display:flex;gap:5px;margin-left:14px;flex-wrap:wrap;}
+  .nav-page{padding:6px 12px;border-radius:8px;border:1px solid var(--border);font-size:11px;color:var(--text-secondary);cursor:pointer;transition:all .15s;white-space:nowrap;}
+  .nav-page:hover{color:var(--text-primary);border-color:var(--border-accent);}
+  .nav-page.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .header-actions{display:flex;gap:6px;align-items:center;}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid var(--border-accent);background:transparent;color:var(--text-primary);font-family:var(--font-mono);font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+  .btn:hover{background:var(--bg-hover);border-color:rgba(255,255,255,0.25);}
+  .btn.accent{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500;}
+  .btn.success{background:var(--success);border-color:var(--success);color:#000;font-weight:500;}
+  .btn.danger{background:transparent;border-color:var(--danger);color:var(--danger);}
+  .btn.danger:hover{background:var(--danger);color:#fff;}
+  .btn svg{width:14px;height:14px;}
+  .btn.sm{padding:5px 9px;font-size:11px;}
+  .btn.icon-btn{padding:7px;}
+  .main{display:flex;flex:1;min-height:0;}
+  .preview-area{flex:1;display:flex;flex-direction:column;min-width:0;position:relative;}
+  .sidebar{width:var(--panel-w);flex-shrink:0;background:var(--bg-surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+  .preview-container{flex:1;position:relative;overflow:hidden;background:#000;}
+  canvas{width:100%;height:100%;display:block;}
+  .preview-overlay{position:absolute;top:12px;left:12px;display:flex;gap:8px;align-items:center;pointer-events:none;}
+  .preview-badge{background:rgba(0,0,0,0.6);border:1px solid var(--border-accent);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--text-secondary);backdrop-filter:blur(8px);}
+  .preview-badge.live{color:var(--success);border-color:var(--success);}
+  .preview-badge.live::before{content:'● ';}
+  .preview-toolbar{height:46px;background:var(--bg-panel);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;}
+  .preview-toolbar .spacer{flex:1;}
+  .fps-display{font-size:11px;color:var(--text-muted);}
+  .sidebar-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .tab{flex:1;padding:10px 0;text-align:center;font-size:11px;color:var(--text-muted);cursor:pointer;transition:all .15s;border-bottom:2px solid transparent;text-transform:uppercase;letter-spacing:0.5px;}
+  .tab:hover{color:var(--text-secondary);}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .sidebar-content{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:14px;display:flex;flex-direction:column;gap:12px;}
+  .sidebar-content::-webkit-scrollbar{width:6px;}
+  .sidebar-content::-webkit-scrollbar-thumb{background:var(--bg-hover);border-radius:4px;}
+  .panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;flex-shrink:0;}
+  .panel-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;}
+  .panel-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);font-weight:500;display:flex;align-items:center;gap:8px;}
+  .panel-title-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+  .panel-toggle{font-size:16px;color:var(--text-muted);transition:transform .2s;}
+  .panel-toggle.open{transform:rotate(180deg);}
+  .panel-body{padding:12px;display:flex;flex-direction:column;gap:10px;}
+  .panel-body.hidden{display:none;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field-row{display:flex;align-items:center;gap:8px;}
+  .label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;}
+  .label.inline{color:var(--text-secondary);font-size:12px;text-transform:none;letter-spacing:0;flex:1;}
+  input[type="range"]{-webkit-appearance:none;width:100%;height:4px;background:var(--bg-hover);border-radius:2px;outline:none;cursor:pointer;}
+  input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--bg-card);cursor:pointer;}
+  .value-display{font-size:11px;color:var(--accent);min-width:36px;text-align:right;}
+  select{width:100%;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-primary);padding:7px 10px;border-radius:7px;font-family:var(--font-mono);font-size:12px;cursor:pointer;outline:none;}
+  select:focus{border-color:var(--accent);}
+  input[type="color"]{-webkit-appearance:none;width:28px;height:28px;border:2px solid var(--border-accent);border-radius:6px;background:none;cursor:pointer;padding:0;overflow:hidden;}
+  input[type="color"]::-webkit-color-swatch{border:none;border-radius:4px;}
+  input[type="number"]{width:60px;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-primary);padding:5px 8px;border-radius:6px;font-family:var(--font-mono);font-size:12px;text-align:center;outline:none;}
+  input[type="text"].tpl-search{width:100%;background:var(--bg-hover);border:1px solid var(--border);color:var(--text-primary);padding:7px 10px;border-radius:7px;font-family:var(--font-mono);font-size:12px;outline:none;margin-bottom:8px;}
+  input[type="checkbox"]{-webkit-appearance:none;width:16px;height:16px;border:1.5px solid var(--border-accent);border-radius:4px;background:transparent;cursor:pointer;position:relative;flex-shrink:0;}
+  input[type="checkbox"]:checked{background:var(--accent);border-color:var(--accent);}
+  input[type="checkbox"]:checked::after{content:'✓';position:absolute;top:-1px;left:2px;font-size:11px;color:#fff;}
+  .color-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .swatch-wrap{position:relative;}
+  .swatch-del{position:absolute;top:-4px;right:-4px;width:14px;height:14px;border-radius:50%;background:var(--danger);color:#fff;font-size:10px;line-height:14px;text-align:center;cursor:pointer;display:none;}
+  .swatch-wrap:hover .swatch-del{display:block;}
+  .add-color-btn{width:28px;height:28px;border-radius:6px;border:1.5px dashed var(--border-accent);background:transparent;color:var(--text-muted);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+  .preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .preset-card{background:var(--bg-hover);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;transition:all .15s;}
+  .preset-card:hover{border-color:var(--border-accent);}
+  .preset-card.active{border-color:var(--accent);background:rgba(124,111,255,0.1);}
+  .preset-name{font-size:12px;color:var(--text-primary);margin-bottom:2px;}
+  .preset-desc{font-size:10px;color:var(--text-muted);}
+  .tpl-scroll{max-height:260px;overflow-y:auto;padding-right:4px;}
+  .tpl-scroll::-webkit-scrollbar{width:6px;}
+  .tpl-scroll::-webkit-scrollbar-thumb{background:var(--bg-hover);border-radius:4px;}
+  .chip-group{display:flex;flex-wrap:wrap;gap:5px;}
+  .chip{padding:4px 10px;border-radius:100px;border:1px solid var(--border);font-size:11px;color:var(--text-secondary);cursor:pointer;transition:all .15s;background:transparent;}
+  .chip:hover{border-color:var(--border-accent);color:var(--text-primary);}
+  .chip.active{background:rgba(124,111,255,0.15);border-color:var(--accent);color:var(--accent);}
+  .progress-bar{height:6px;background:var(--bg-hover);border-radius:3px;overflow:hidden;margin-top:4px;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:3px;transition:width .08s linear;width:0%;}
+  .export-status{font-size:11px;color:var(--text-muted);text-align:center;min-height:16px;}
+  .export-note{font-size:10px;color:var(--text-muted);line-height:1.5;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;padding:8px;}
+  .export-note b{color:var(--accent-4);}
+  .random-btn{width:100%;padding:8px;background:linear-gradient(135deg,rgba(124,111,255,0.1),rgba(255,111,145,0.1));border:1px solid rgba(124,111,255,0.3);border-radius:8px;color:var(--accent);font-family:var(--font-mono);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .sep{height:1px;background:var(--border);margin:2px 0;}
+  .format-warning{color:var(--accent-4);font-size:10px;margin-top:3px;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  .live-dot{animation:blink 1.5s infinite;}
+  .page{display:none;flex:1;min-height:0;}
+  .page.active{display:flex;}
+  .dir-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
+  .dir-btn{padding:8px 4px;border:1px solid var(--border);border-radius:7px;background:var(--bg-hover);color:var(--text-secondary);font-size:10px;cursor:pointer;text-align:center;transition:all .15s;}
+  .dir-btn:hover{border-color:var(--border-accent);color:var(--text-primary);}
+  .dir-btn.active{background:rgba(124,111,255,0.15);border-color:var(--accent);color:var(--accent);}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.5/build/mp4-muxer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/webm-muxer@5.0.3/build/webm-muxer.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div style="display:flex;align-items:center;min-width:0">
+      <div class="logo">BG<span>◆</span>STUDIO</div>
+      <div class="nav-pages">
+        <div class="nav-page active" id="nav-studio" onclick="switchPage('studio')">Studio</div>
+        <div class="nav-page" id="nav-blob" onclick="switchPage('blob')">Blob</div>
+        <div class="nav-page" id="nav-gradient" onclick="switchPage('gradient')">Gradient</div>
+        <div class="nav-page" id="nav-pattern" onclick="switchPage('pattern')">Pattern</div>
+        <div class="nav-page" id="nav-particle" onclick="switchPage('particle')">Particle Lab</div>
+        <div class="nav-page" id="nav-svg" onclick="switchPage('svg')">SVG Coder</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn sm" onclick="globalRandomize()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6"/></svg>Randomize</button>
+      <button class="btn danger sm" onclick="globalReset()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>Reset</button>
+    </div>
+  </header>
+  <!-- ===== STUDIO PAGE ===== -->
+  <div class="page active" id="page-studio">
+    <div class="preview-area">
+      <div class="preview-container">
+        <canvas id="previewCanvas"></canvas>
+        <div class="preview-overlay">
+          <div class="preview-badge live live-dot">LIVE</div>
+          <div class="preview-badge" id="dimBadge">1280×720</div>
+          <div class="preview-badge" id="animBadge">Wave Flow</div>
+        </div>
+      </div>
+      <div class="preview-toolbar">
+        <button class="btn sm icon-btn" onclick="togglePlay()" title="Play/Pause"><svg viewBox="0 0 24 24" fill="currentColor" id="toolbarPlayIcon" width="14" height="14"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="btn sm icon-btn" onclick="resetAnimation()" title="Restart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></button>
+        <div class="spacer"></div>
+        <div class="fps-display" id="fpsDisplay">-- FPS</div>
+        <div style="width:1px;height:20px;background:var(--border);margin:0 4px"></div>
+        <div class="fps-display" id="timeDisplay">0.00s</div>
+      </div>
+    </div>
+    <aside class="sidebar">
+      <div class="sidebar-tabs">
+        <div class="tab active" onclick="switchTab('animation')" id="tab-animation">Animate</div>
+        <div class="tab" onclick="switchTab('colors')" id="tab-colors">Colors</div>
+        <div class="tab" onclick="switchTab('effects')" id="tab-effects">Effects</div>
+        <div class="tab" onclick="switchTab('export')" id="tab-export">Export</div>
+      </div>
+      <div class="sidebar-content" id="panel-animation">
+        <button class="random-btn" onclick="randomizeAnimation()">Random Animation</button>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot"></div>Templates (<span id="tplCount">0</span>)</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <input type="text" class="tpl-search" id="tplSearch" placeholder="Search templates…" oninput="buildPresetGrid(this.value)">
+            <div class="chip-group" id="catChips"></div><div class="sep"></div>
+            <div class="tpl-scroll"><div class="preset-grid" id="presetGrid"></div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-3)"></div>Motion</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field"><div class="field-row"><span class="label inline">Speed</span><span class="value-display" id="val-speed">1.0×</span></div><input type="range" id="sl-speed" min="0.1" max="5" step="0.1" value="1" oninput="updateParam('speed',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Scale</span><span class="value-display" id="val-scale">1.0</span></div><input type="range" id="sl-scale" min="0.1" max="5" step="0.1" value="1" oninput="updateParam('scale',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Complexity</span><span class="value-display" id="val-complexity">5</span></div><input type="range" id="sl-complexity" min="1" max="20" step="1" value="5" oninput="updateParam('complexity',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Rotation</span><span class="value-display" id="val-rotSpeed">0.0</span></div><input type="range" id="sl-rotSpeed" min="0" max="5" step="0.1" value="0" oninput="updateParam('rotSpeed',+this.value)"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-4)"></div>Particles</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field-row"><span class="label inline">Enable</span><input type="checkbox" id="cb-particles" onchange="updateParam('particles',this.checked)" checked></div>
+            <div class="field"><div class="field-row"><span class="label inline">Count</span><span class="value-display" id="val-particleCount">80</span></div><input type="range" id="sl-particleCount" min="0" max="400" step="10" value="80" oninput="updateParam('particleCount',+this.value);initParticles()"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Size</span><span class="value-display" id="val-particleSize">3</span></div><input type="range" id="sl-particleSize" min="1" max="20" step="0.5" value="3" oninput="updateParam('particleSize',+this.value)"></div>
+            <div class="field"><div class="label" style="margin-bottom:4px">Shape</div><div class="chip-group">
+              <div class="chip active" onclick="setChip(this,'pShape','circle')" data-group="pShape">Circle</div>
+              <div class="chip" onclick="setChip(this,'pShape','square')" data-group="pShape">Square</div>
+              <div class="chip" onclick="setChip(this,'pShape','star')" data-group="pShape">Star</div>
+              <div class="chip" onclick="setChip(this,'pShape','triangle')" data-group="pShape">Triangle</div>
+            </div></div>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-content" id="panel-colors" style="display:none">
+        <button class="random-btn" onclick="randomizeColors()">Random Palette</button>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-2)"></div>Palette</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body"><div class="color-row" id="colorSwatches"></div><div class="sep"></div><div class="chip-group" id="paletteChips"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-3)"></div>Gradient</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="chip-group">
+              <div class="chip active" onclick="setChip(this,'gradType','radial')" data-group="gradType">Radial</div>
+              <div class="chip" onclick="setChip(this,'gradType','linear')" data-group="gradType">Linear</div>
+              <div class="chip" onclick="setChip(this,'gradType','conic')" data-group="gradType">Conic</div>
+            </div>
+            <div class="field"><div class="field-row"><span class="label inline">Intensity</span><span class="value-display" id="val-gradIntensity">0.8</span></div><input type="range" id="sl-gradIntensity" min="0" max="1" step="0.05" value="0.8" oninput="updateParam('gradIntensity',+this.value)"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot"></div>Background</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field-row"><span class="label inline">BG Color</span><input type="color" id="bgColor" value="#050510" onchange="updateParam('bgColor',this.value)"></div>
+            <div class="field-row"><span class="label inline">Transparent</span><input type="checkbox" id="cb-transparentBg" onchange="updateParam('transparentBg',this.checked)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Vignette</span><span class="value-display" id="val-vignette">0.5</span></div><input type="range" id="sl-vignette" min="0" max="1" step="0.05" value="0.5" oninput="updateParam('vignette',+this.value)"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-content" id="panel-effects" style="display:none">
+        <button class="random-btn" onclick="randomizeEffects()">Random Effects</button>
+        <button class="btn danger" style="width:100%;justify-content:center" onclick="resetEffects()">Reset Effects Only</button>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-4)"></div>Post Processing</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field"><div class="field-row"><span class="label inline">Chromatic</span><span class="value-display" id="val-chroma">0</span></div><input type="range" id="sl-chroma" min="0" max="10" step="0.5" value="0" oninput="updateParam('chroma',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Grain</span><span class="value-display" id="val-grain">0.00</span></div><input type="range" id="sl-grain" min="0" max="1" step="0.05" value="0" oninput="updateParam('grain',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Scanlines</span><span class="value-display" id="val-scanlines">0.00</span></div><input type="range" id="sl-scanlines" min="0" max="1" step="0.05" value="0" oninput="updateParam('scanlines',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Glow</span><span class="value-display" id="val-glowR">0</span></div><input type="range" id="sl-glowR" min="0" max="30" step="1" value="0" oninput="updateParam('glowR',+this.value)"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot"></div>Overlays</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field-row"><span class="label inline">Grid</span><input type="checkbox" id="cb-gridOverlay" onchange="updateParam('gridOverlay',this.checked)"></div>
+            <div class="field-row"><span class="label inline">Dot Grid</span><input type="checkbox" id="cb-dotGrid" onchange="updateParam('dotGrid',this.checked)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Opacity</span><span class="value-display" id="val-overlayOp">0.15</span></div><input type="range" id="sl-overlayOp" min="0" max="0.5" step="0.01" value="0.15" oninput="updateParam('overlayOp',+this.value)"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-content" id="panel-export" style="display:none">
+        <div class="export-note"><b>⚡ Tips:</b><br>• MP4 / MOV / WebM all export natively (Chrome / Edge)<br>• Older browsers fall back to WebM<br>• Length = exactly your duration</div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--success)"></div>Video Export</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field"><div class="label">Resolution</div><select id="exp-res" onchange="updateExportParam('res',this.value)">
+              <option value="480">854×480 SD</option><option value="720" selected>1280×720 HD</option>
+              <option value="1080">1920×1080 FHD</option><option value="1440">2560×1440 2K</option><option value="2160">3840×2160 4K</option>
+            </select></div>
+            <div class="field"><div class="label">FPS</div><select id="exp-fps" onchange="updateExportParam('fps',+this.value)"><option value="24">24</option><option value="30" selected>30</option><option value="60">60</option></select></div>
+            <div class="field"><div class="field-row"><span class="label inline">Duration (sec)</span><input type="number" id="exp-duration" value="5" min="1" max="30" onchange="updateExportParam('duration',+this.value)"></div></div>
+            <div class="field"><div class="label">Quality</div><select id="exp-quality" onchange="updateExportParam('quality',this.value)"><option value="ultra">Ultra</option><option value="high" selected>High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>
+            <div class="field"><div class="label">Format</div><select id="exp-format" onchange="updateExportParam('format',this.value)"><option value="webm" selected>WebM</option><option value="mp4">MP4 (H.264)</option><option value="mov">MOV (H.264)</option></select></div>
+            <div class="sep"></div>
+            <div id="exp-info" style="font-size:11px;color:var(--text-muted);text-align:center">5s · 30 FPS · 1280×720 → 150 frames</div>
+            <div class="format-warning" id="exp-warn" style="display:none"></div>
+            <button class="btn success" id="exportBtn" onclick="startExport()" style="width:100%;justify-content:center;margin-top:4px">Render &amp; Download</button>
+            <div class="progress-bar" id="expProgressBar" style="display:none"><div class="progress-fill" id="expProgress"></div></div>
+            <div class="export-status" id="expStatus"></div>
+            <button class="btn" style="width:100%;justify-content:center" onclick="exportPNG()">Save PNG</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ===== BLOB PAGE ===== -->
+  <div class="page" id="page-blob">
+    <div class="preview-area">
+      <div class="preview-container">
+        <canvas id="blobCanvas"></canvas>
+        <div class="preview-overlay">
+          <div class="preview-badge live live-dot" id="blobStatusBadge">LIVE</div>
+          <div class="preview-badge" id="blobDimBadge">1280×720</div>
+          <div class="preview-badge" id="blobTplBadge">Metaballs</div>
+        </div>
+      </div>
+      <div class="preview-toolbar">
+        <button class="btn sm icon-btn" onclick="toggleBlobPlay()" title="Play/Pause"><svg viewBox="0 0 24 24" fill="currentColor" id="blobPlayIcon" width="14" height="14"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="btn sm icon-btn" onclick="initBlobScene()" title="Restart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></button>
+        <div class="spacer"></div>
+        <div class="fps-display" id="blobTimeDisplay">0.00s</div>
+      </div>
+    </div>
+    <aside class="sidebar">
+      <div class="sidebar-tabs">
+        <div class="tab active" onclick="switchBlobTab('design')" id="btab-design">Design</div>
+        <div class="tab" onclick="switchBlobTab('export')" id="btab-export">Export</div>
+      </div>
+      <div class="sidebar-content" id="bpanel-design">
+        <button class="random-btn" onclick="randomizeBlob()">Randomize Blobs</button>
+        <button class="btn danger" style="width:100%;justify-content:center" onclick="resetBlob()">Reset Blob Settings</button>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot"></div>Templates (<span id="blobTplCount">0</span>)</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <input type="text" class="tpl-search" id="blobSearch" placeholder="Search blob templates…" oninput="buildBlobTplGrid(this.value)">
+            <div class="chip-group" id="blobCatChips"></div><div class="sep"></div>
+            <div class="tpl-scroll"><div class="preset-grid" id="blobTplGrid"></div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-3)"></div>Direction</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body"><div class="dir-grid" id="blobDirGrid"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-4)"></div>Blob Settings</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field"><div class="field-row"><span class="label inline">Count</span><span class="value-display" id="bval-count">8</span></div><input type="range" id="bsl-count" min="2" max="40" step="1" value="8" oninput="updateBlob('count',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Size</span><span class="value-display" id="bval-size">120</span></div><input type="range" id="bsl-size" min="20" max="360" step="5" value="120" oninput="updateBlob('size',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Speed</span><span class="value-display" id="bval-speed">1.0</span></div><input type="range" id="bsl-speed" min="0.1" max="5" step="0.1" value="1" oninput="updateBlob('speed',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Wobble</span><span class="value-display" id="bval-wobble">0.5</span></div><input type="range" id="bsl-wobble" min="0" max="1" step="0.05" value="0.5" oninput="updateBlob('wobble',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Blur / Merge</span><span class="value-display" id="bval-blur">20</span></div><input type="range" id="bsl-blur" min="0" max="80" step="1" value="20" oninput="updateBlob('blur',+this.value)"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-2)"></div>Colors</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="color-row" id="blobSwatches"></div><div class="sep"></div>
+            <div class="chip-group" id="blobPaletteChips"></div>
+            <div class="field-row" style="margin-top:6px"><span class="label inline">BG Color</span><input type="color" id="blobBgColor" value="#070710" onchange="updateBlob('bgColor',this.value)"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-content" id="bpanel-export" style="display:none">
+        <div class="export-note"><b>⚡ Blob Export:</b><br>MP4 / MOV / WebM — exact duration, 2K/4K ready</div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--success)"></div>Video Export</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field"><div class="label">Resolution</div><select id="bexp-res" onchange="updateBlobExport('res',this.value)">
+              <option value="480">854×480 SD</option><option value="720" selected>1280×720 HD</option>
+              <option value="1080">1920×1080 FHD</option><option value="1440">2560×1440 2K</option><option value="2160">3840×2160 4K</option>
+            </select></div>
+            <div class="field"><div class="label">FPS</div><select id="bexp-fps" onchange="updateBlobExport('fps',+this.value)"><option value="24">24</option><option value="30" selected>30</option><option value="60">60</option></select></div>
+            <div class="field"><div class="field-row"><span class="label inline">Duration (sec)</span><input type="number" id="bexp-duration" value="5" min="1" max="30" onchange="updateBlobExport('duration',+this.value)"></div></div>
+            <div class="field"><div class="label">Quality</div><select id="bexp-quality" onchange="updateBlobExport('quality',this.value)"><option value="ultra">Ultra</option><option value="high" selected>High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>
+            <div class="field"><div class="label">Format</div><select id="bexp-format" onchange="updateBlobExport('format',this.value)"><option value="webm" selected>WebM</option><option value="mp4">MP4 (H.264)</option><option value="mov">MOV (H.264)</option></select></div>
+            <div class="sep"></div>
+            <div id="bexp-info" style="font-size:11px;color:var(--text-muted);text-align:center">5s · 30 FPS · 1280×720 → 150 frames</div>
+            <div class="format-warning" id="bexp-warn" style="display:none"></div>
+            <button class="btn success" id="blobExportBtn" onclick="startBlobExport()" style="width:100%;justify-content:center;margin-top:4px">Render &amp; Download</button>
+            <div class="progress-bar" id="blobProgressBar" style="display:none"><div class="progress-fill" id="blobProgress"></div></div>
+            <div class="export-status" id="blobExpStatus"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <!-- ===== GRADIENT PAGE ===== -->
+  <div class="page" id="page-gradient">
+    <div class="preview-area">
+      <div class="preview-container">
+        <canvas id="gradCanvas"></canvas>
+        <div class="preview-overlay">
+          <div class="preview-badge live live-dot" id="gradStatusBadge">LIVE</div>
+          <div class="preview-badge" id="gradDimBadge">1280×720</div>
+          <div class="preview-badge" id="gradTplBadge">Mesh</div>
+        </div>
+      </div>
+      <div class="preview-toolbar">
+        <button class="btn sm icon-btn" onclick="toggleGradPlay()" title="Play/Pause"><svg viewBox="0 0 24 24" fill="currentColor" id="gradPlayIcon" width="14" height="14"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="btn sm icon-btn" onclick="gradTime=0" title="Restart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></button>
+        <div class="spacer"></div>
+        <div class="fps-display" id="gradTimeDisplay">0.00s</div>
+      </div>
+    </div>
+    <aside class="sidebar">
+      <div class="sidebar-tabs">
+        <div class="tab active" onclick="switchGradTab('design')" id="gtab-design">Design</div>
+        <div class="tab" onclick="switchGradTab('export')" id="gtab-export">Export</div>
+      </div>
+      <div class="sidebar-content" id="gpanel-design">
+        <button class="random-btn" onclick="randomizeGrad()">Randomize Gradient</button>
+        <button class="btn danger" style="width:100%;justify-content:center" onclick="resetGrad()">Reset</button>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot"></div>Type</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body"><div class="preset-grid" id="gradTplGrid"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-3)"></div>Settings</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field"><div class="field-row"><span class="label inline">Speed</span><span class="value-display" id="gval-speed">1.0</span></div><input type="range" id="gsl-speed" min="0.1" max="5" step="0.1" value="1" oninput="updateGrad('speed',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Blobs / Stops</span><span class="value-display" id="gval-points">5</span></div><input type="range" id="gsl-points" min="2" max="12" step="1" value="5" oninput="updateGrad('points',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Softness</span><span class="value-display" id="gval-soft">0.7</span></div><input type="range" id="gsl-soft" min="0.2" max="1" step="0.05" value="0.7" oninput="updateGrad('soft',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Grain</span><span class="value-display" id="gval-grain">0.05</span></div><input type="range" id="gsl-grain" min="0" max="0.6" step="0.02" value="0.05" oninput="updateGrad('grain',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Angle</span><span class="value-display" id="gval-angle">45</span></div><input type="range" id="gsl-angle" min="0" max="360" step="5" value="45" oninput="updateGrad('angle',+this.value)"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-2)"></div>Colors</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body"><div class="color-row" id="gradSwatches"></div><div class="sep"></div><div class="chip-group" id="gradPaletteChips"></div></div>
+        </div>
+      </div>
+      <div class="sidebar-content" id="gpanel-export" style="display:none">
+        <div class="export-note"><b>⚡ Gradient Export:</b><br>MP4 / MOV / WebM — exact duration, 2K/4K ready</div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--success)"></div>Video Export</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field"><div class="label">Resolution</div><select id="gexp-res" onchange="updateGradExport('res',this.value)"><option value="480">854×480 SD</option><option value="720" selected>1280×720 HD</option><option value="1080">1920×1080 FHD</option><option value="1440">2560×1440 2K</option><option value="2160">3840×2160 4K</option></select></div>
+            <div class="field"><div class="label">FPS</div><select id="gexp-fps" onchange="updateGradExport('fps',+this.value)"><option value="24">24</option><option value="30" selected>30</option><option value="60">60</option></select></div>
+            <div class="field"><div class="field-row"><span class="label inline">Duration (sec)</span><input type="number" id="gexp-duration" value="5" min="1" max="30" onchange="updateGradExport('duration',+this.value)"></div></div>
+            <div class="field"><div class="label">Quality</div><select id="gexp-quality" onchange="updateGradExport('quality',this.value)"><option value="ultra">Ultra</option><option value="high" selected>High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>
+            <div class="field"><div class="label">Format</div><select id="gexp-format" onchange="updateGradExport('format',this.value)"><option value="webm" selected>WebM</option><option value="mp4">MP4 (H.264)</option><option value="mov">MOV (H.264)</option></select></div>
+            <div class="sep"></div>
+            <div id="gexp-info" style="font-size:11px;color:var(--text-muted);text-align:center">5s · 30 FPS · 1280×720 → 150 frames</div>
+            <div class="format-warning" id="gexp-warn" style="display:none"></div>
+            <button class="btn success" id="gradExportBtn" onclick="startGradExport()" style="width:100%;justify-content:center;margin-top:4px">Render &amp; Download</button>
+            <div class="progress-bar" id="gradProgressBar" style="display:none"><div class="progress-fill" id="gradProgress"></div></div>
+            <div class="export-status" id="gradExpStatus"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ===== PATTERN PAGE ===== -->
+  <div class="page" id="page-pattern">
+    <div class="preview-area">
+      <div class="preview-container">
+        <canvas id="patCanvas"></canvas>
+        <div class="preview-overlay">
+          <div class="preview-badge live live-dot" id="patStatusBadge">LIVE</div>
+          <div class="preview-badge" id="patDimBadge">1280×720</div>
+          <div class="preview-badge" id="patTplBadge">Dots</div>
+        </div>
+      </div>
+      <div class="preview-toolbar">
+        <button class="btn sm icon-btn" onclick="togglePatPlay()" title="Play/Pause"><svg viewBox="0 0 24 24" fill="currentColor" id="patPlayIcon" width="14" height="14"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="btn sm icon-btn" onclick="patTime=0" title="Restart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></button>
+        <div class="spacer"></div>
+        <div class="fps-display" id="patTimeDisplay">0.00s</div>
+      </div>
+    </div>
+    <aside class="sidebar">
+      <div class="sidebar-tabs">
+        <div class="tab active" onclick="switchPatTab('design')" id="ptab-design">Design</div>
+        <div class="tab" onclick="switchPatTab('export')" id="ptab-export">Export</div>
+      </div>
+      <div class="sidebar-content" id="ppanel-design">
+        <button class="random-btn" onclick="randomizePat()">Randomize Pattern</button>
+        <button class="btn danger" style="width:100%;justify-content:center" onclick="resetPat()">Reset</button>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot"></div>Pattern</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body"><div class="preset-grid" id="patTplGrid"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-3)"></div>Settings</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field"><div class="field-row"><span class="label inline">Speed</span><span class="value-display" id="pval-speed">1.0</span></div><input type="range" id="psl-speed" min="0" max="5" step="0.1" value="1" oninput="updatePat('speed',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Tile Size</span><span class="value-display" id="pval-size">40</span></div><input type="range" id="psl-size" min="10" max="140" step="2" value="40" oninput="updatePat('size',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Thickness</span><span class="value-display" id="pval-thick">2</span></div><input type="range" id="psl-thick" min="1" max="20" step="0.5" value="2" oninput="updatePat('thick',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Angle</span><span class="value-display" id="pval-angle">0</span></div><input type="range" id="psl-angle" min="0" max="360" step="5" value="0" oninput="updatePat('angle',+this.value)"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-2)"></div>Colors</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="color-row" id="patSwatches"></div><div class="sep"></div><div class="chip-group" id="patPaletteChips"></div>
+            <div class="field-row" style="margin-top:6px"><span class="label inline">BG Color</span><input type="color" id="patBgColor" value="#0a0a14" onchange="updatePat('bgColor',this.value)"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-content" id="ppanel-export" style="display:none">
+        <div class="export-note"><b>⚡ Pattern Export:</b><br>MP4 / MOV / WebM — exact duration, 2K/4K ready</div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--success)"></div>Video Export</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field"><div class="label">Resolution</div><select id="pexp-res" onchange="updatePatExport('res',this.value)"><option value="480">854×480 SD</option><option value="720" selected>1280×720 HD</option><option value="1080">1920×1080 FHD</option><option value="1440">2560×1440 2K</option><option value="2160">3840×2160 4K</option></select></div>
+            <div class="field"><div class="label">FPS</div><select id="pexp-fps" onchange="updatePatExport('fps',+this.value)"><option value="24">24</option><option value="30" selected>30</option><option value="60">60</option></select></div>
+            <div class="field"><div class="field-row"><span class="label inline">Duration (sec)</span><input type="number" id="pexp-duration" value="5" min="1" max="30" onchange="updatePatExport('duration',+this.value)"></div></div>
+            <div class="field"><div class="label">Quality</div><select id="pexp-quality" onchange="updatePatExport('quality',this.value)"><option value="ultra">Ultra</option><option value="high" selected>High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>
+            <div class="field"><div class="label">Format</div><select id="pexp-format" onchange="updatePatExport('format',this.value)"><option value="webm" selected>WebM</option><option value="mp4">MP4 (H.264)</option><option value="mov">MOV (H.264)</option></select></div>
+            <div class="sep"></div>
+            <div id="pexp-info" style="font-size:11px;color:var(--text-muted);text-align:center">5s · 30 FPS · 1280×720 → 150 frames</div>
+            <div class="format-warning" id="pexp-warn" style="display:none"></div>
+            <button class="btn success" id="patExportBtn" onclick="startPatExport()" style="width:100%;justify-content:center;margin-top:4px">Render &amp; Download</button>
+            <div class="progress-bar" id="patProgressBar" style="display:none"><div class="progress-fill" id="patProgress"></div></div>
+            <div class="export-status" id="patExpStatus"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ===== PARTICLE LAB PAGE ===== -->
+  <div class="page" id="page-particle">
+    <div class="preview-area">
+      <div class="preview-container">
+        <canvas id="plCanvas"></canvas>
+        <div class="preview-overlay">
+          <div class="preview-badge live live-dot" id="plStatusBadge">LIVE</div>
+          <div class="preview-badge" id="plDimBadge">1280×720</div>
+          <div class="preview-badge" id="plTplBadge">Flow Field</div>
+        </div>
+      </div>
+      <div class="preview-toolbar">
+        <button class="btn sm icon-btn" onclick="togglePlPlay()" title="Play/Pause"><svg viewBox="0 0 24 24" fill="currentColor" id="plPlayIcon" width="14" height="14"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="btn sm icon-btn" onclick="initPlScene()" title="Restart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></button>
+        <div class="spacer"></div>
+        <div class="fps-display" id="plTimeDisplay">0.00s</div>
+      </div>
+    </div>
+    <aside class="sidebar">
+      <div class="sidebar-tabs">
+        <div class="tab active" onclick="switchPlTab('design')" id="pltab-design">Design</div>
+        <div class="tab" onclick="switchPlTab('export')" id="pltab-export">Export</div>
+      </div>
+      <div class="sidebar-content" id="plpanel-design">
+        <button class="random-btn" onclick="randomizePl()">Randomize</button>
+        <button class="btn danger" style="width:100%;justify-content:center" onclick="resetPl()">Reset</button>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot"></div>Behavior</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body"><div class="preset-grid" id="plTplGrid"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-3)"></div>Settings</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field"><div class="field-row"><span class="label inline">Count</span><span class="value-display" id="plval-count">300</span></div><input type="range" id="plsl-count" min="20" max="1500" step="20" value="300" oninput="updatePl('count',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Speed</span><span class="value-display" id="plval-speed">1.0</span></div><input type="range" id="plsl-speed" min="0.1" max="5" step="0.1" value="1" oninput="updatePl('speed',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Size</span><span class="value-display" id="plval-size">2</span></div><input type="range" id="plsl-size" min="0.5" max="12" step="0.5" value="2" oninput="updatePl('size',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Trail</span><span class="value-display" id="plval-trail">0.9</span></div><input type="range" id="plsl-trail" min="0.5" max="0.99" step="0.01" value="0.9" oninput="updatePl('trail',+this.value)"></div>
+            <div class="field"><div class="field-row"><span class="label inline">Force</span><span class="value-display" id="plval-force">1.0</span></div><input type="range" id="plsl-force" min="0.1" max="5" step="0.1" value="1" oninput="updatePl('force',+this.value)"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--accent-2)"></div>Colors</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="color-row" id="plSwatches"></div><div class="sep"></div><div class="chip-group" id="plPaletteChips"></div>
+            <div class="field-row" style="margin-top:6px"><span class="label inline">BG Color</span><input type="color" id="plBgColor" value="#05050c" onchange="updatePl('bgColor',this.value)"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-content" id="plpanel-export" style="display:none">
+        <div class="export-note"><b>⚡ Particle Export:</b><br>MP4 / MOV / WebM — exact duration, 2K/4K ready</div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--success)"></div>Video Export</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field"><div class="label">Resolution</div><select id="plexp-res" onchange="updatePlExport('res',this.value)"><option value="480">854×480 SD</option><option value="720" selected>1280×720 HD</option><option value="1080">1920×1080 FHD</option><option value="1440">2560×1440 2K</option><option value="2160">3840×2160 4K</option></select></div>
+            <div class="field"><div class="label">FPS</div><select id="plexp-fps" onchange="updatePlExport('fps',+this.value)"><option value="24">24</option><option value="30" selected>30</option><option value="60">60</option></select></div>
+            <div class="field"><div class="field-row"><span class="label inline">Duration (sec)</span><input type="number" id="plexp-duration" value="5" min="1" max="30" onchange="updatePlExport('duration',+this.value)"></div></div>
+            <div class="field"><div class="label">Quality</div><select id="plexp-quality" onchange="updatePlExport('quality',this.value)"><option value="ultra">Ultra</option><option value="high" selected>High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>
+            <div class="field"><div class="label">Format</div><select id="plexp-format" onchange="updatePlExport('format',this.value)"><option value="webm" selected>WebM</option><option value="mp4">MP4 (H.264)</option><option value="mov">MOV (H.264)</option></select></div>
+            <div class="sep"></div>
+            <div id="plexp-info" style="font-size:11px;color:var(--text-muted);text-align:center">5s · 30 FPS · 1280×720 → 150 frames</div>
+            <div class="format-warning" id="plexp-warn" style="display:none"></div>
+            <button class="btn success" id="plExportBtn" onclick="startPlExport()" style="width:100%;justify-content:center;margin-top:4px">Render &amp; Download</button>
+            <div class="progress-bar" id="plProgressBar" style="display:none"><div class="progress-fill" id="plProgress"></div></div>
+            <div class="export-status" id="plExpStatus"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ===== SVG CODER PAGE ===== -->
+  <div class="page" id="page-svg">
+    <div class="preview-area">
+      <div class="preview-container">
+        <div id="svgPreview" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#020617;overflow:hidden"></div>
+        <div class="preview-overlay">
+          <div class="preview-badge live live-dot">LIVE</div>
+          <div class="preview-badge" id="svgDimBadge">SVG</div>
+        </div>
+      </div>
+      <div class="preview-toolbar">
+        <button class="btn sm icon-btn" onclick="restartSvg()" title="Restart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></button>
+        <div class="spacer"></div>
+        <div class="fps-display" id="svgInfoDisplay">Paste SVG →</div>
+      </div>
+    </div>
+    <aside class="sidebar">
+      <div class="sidebar-tabs">
+        <div class="tab active" onclick="switchSvgTab('source')" id="svtab-source">Source</div>
+        <div class="tab" onclick="switchSvgTab('export')" id="svtab-export">Export</div>
+      </div>
+      <div class="sidebar-content" id="svpanel-source">
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot"></div>SVG Code</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <textarea id="svgCodeInput" spellcheck="false" style="width:100%;min-height:340px;background:var(--bg);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;line-height:1.4;resize:vertical" placeholder="Paste <svg>…</svg> here"></textarea>
+            <button class="btn" style="width:100%;justify-content:center;margin-top:6px" onclick="loadSvgSample()">Load Sample</button>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Tip: include &lt;style&gt; with @keyframes or SMIL animations.</div>
+          </div>
+        </div>
+      </div>
+      <div class="sidebar-content" id="svpanel-export" style="display:none">
+        <div class="export-note"><b>🎬 SVG Export:</b><br>Exact duration · MP4 / MOV / WebM<br>(real-time capture preserves CSS/SMIL timing)</div>
+        <div class="panel">
+          <div class="panel-header" onclick="togglePanel(this)"><div class="panel-title"><div class="panel-title-dot" style="background:var(--success)"></div>Video Export</div><div class="panel-toggle open">▾</div></div>
+          <div class="panel-body">
+            <div class="field"><div class="label">Resolution</div><select id="svexp-res" onchange="updateSvgExport('res',this.value)"><option value="480">854×480 SD</option><option value="720">1280×720 HD</option><option value="1080" selected>1920×1080 FHD</option><option value="1440">2560×1440 2K</option><option value="2160">3840×2160 4K</option></select></div>
+            <div class="field"><div class="label">FPS</div><select id="svexp-fps" onchange="updateSvgExport('fps',+this.value)"><option value="24">24</option><option value="30" selected>30</option><option value="60">60</option></select></div>
+            <div class="field"><div class="field-row"><span class="label inline">Duration (sec)</span><input type="number" id="svexp-duration" value="6" min="1" max="60" onchange="updateSvgExport('duration',+this.value)"></div></div>
+            <div class="field"><div class="label">Quality</div><select id="svexp-quality" onchange="updateSvgExport('quality',this.value)"><option value="ultra">Ultra</option><option value="high" selected>High</option><option value="medium">Medium</option><option value="low">Low</option></select></div>
+            <div class="field"><div class="label">Format</div><select id="svexp-format" onchange="updateSvgExport('format',this.value)"><option value="mp4" selected>MP4 (H.264)</option><option value="mov">MOV (H.264)</option><option value="webm">WebM (VP9)</option></select></div>
+            <div class="sep"></div>
+            <div id="svexp-info" style="font-size:11px;color:var(--text-muted);text-align:center">6s · 30 FPS · 1920×1080</div>
+            <div class="format-warning" id="svexp-warn" style="display:none"></div>
+            <button class="btn success" id="svgExportBtn" onclick="startSvgExport()" style="width:100%;justify-content:center;margin-top:4px">Render &amp; Download</button>
+            <div class="progress-bar" id="svgProgressBar" style="display:none"><div class="progress-fill" id="svgProgress"></div></div>
+            <div class="export-status" id="svgExpStatus"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+<script>
+// ===== SHARED HELPERS =====
+function hexToRgb(hex){hex=(''+hex).replace('#','');if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');return{r:parseInt(hex.slice(0,2),16),g:parseInt(hex.slice(2,4),16),b:parseInt(hex.slice(4,6),16)};}
+function simplex2(x,y){const n=Math.sin(x*127.1+y*311.7)*43758.5453123;return(n-Math.floor(n))*2-1;}
+function hslToHex(h,s,l){s/=100;l/=100;const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;let r=0,g=0,b=0;if(h<60){r=c;g=x;}else if(h<120){r=x;g=c;}else if(h<180){g=c;b=x;}else if(h<240){g=x;b=c;}else if(h<300){r=x;b=c;}else{r=c;b=x;}const h2=v=>Math.round((v+m)*255).toString(16).padStart(2,'0');return`#${h2(r)}${h2(g)}${h2(b)}`;}
+function rand(a,b){return a+Math.random()*(b-a);}
+function pick(a){return a[Math.floor(Math.random()*a.length)];}
+function randHex(){return '#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');}
+const PALETTES={cosmic:['#7c6fff','#ff6f91','#6fffd4','#ffd96f','#ff6f6f'],fire:['#ff4500','#ff8c00','#ffd700','#ff0000','#ff6600'],ocean:['#006994','#0099cc','#00ccff','#40e0d0','#00ffcc'],forest:['#2d6a4f','#40916c','#74c69d','#95d5b2','#d8f3dc'],neon:['#ff00ff','#00ffff','#ff0099','#00ff00','#ff6600'],pastel:['#ffadad','#ffd6a5','#fdffb6','#caffbf','#9bf6ff'],sunset:['#ff6b35','#f7931e','#ffcd3c','#c0392b','#8e44ad'],royal:['#5a189a','#9d4edd','#c77dff','#e0aaff','#7b2cbf'],ember:['#6a040f','#dc2f02','#f48c06','#ffba08','#e85d04'],mint:['#06d6a0','#1b9aaa','#ef476f','#ffd166','#073b4c']};
+function togglePanel(h){const b=h.nextElementSibling,t=h.querySelector('.panel-toggle');if(b.classList.contains('hidden')){b.classList.remove('hidden');t.classList.add('open');}else{b.classList.add('hidden');t.classList.remove('open');}}
+
+// generic palette chip + swatch builders (work on any state obj with .colors)
+function buildChips(elId,onPick){const w=document.getElementById(elId);if(!w)return;w.innerHTML='';Object.keys(PALETTES).forEach(n=>{const d=document.createElement('div');d.className='chip';d.textContent=n;d.onclick=()=>onPick(n,d);w.appendChild(d);});}
+function buildSwatches(elId,stateColors,rebuild){const row=document.getElementById(elId);if(!row)return;row.innerHTML='';stateColors.forEach((col,i)=>{const wr=document.createElement('div');wr.className='swatch-wrap';const inp=document.createElement('input');inp.type='color';inp.value=col;inp.onchange=e=>stateColors[i]=e.target.value;const del=document.createElement('div');del.className='swatch-del';del.innerHTML='×';del.onclick=()=>{stateColors.splice(i,1);if(!stateColors.length)stateColors.push('#7c6fff');rebuild();};wr.appendChild(inp);if(stateColors.length>1)wr.appendChild(del);row.appendChild(wr);});if(stateColors.length<8){const add=document.createElement('button');add.className='add-color-btn';add.innerHTML='+';add.onclick=()=>{stateColors.push(randHex());rebuild();};row.appendChild(add);}}
+
+// ===== SHARED EXPORT ENGINE (exact duration, WebCodecs MP4/MOV/WebM) =====
+const RES_MAP={'480':[854,480],'720':[1280,720],'1080':[1920,1080],'1440':[2560,1440],'2160':[3840,2160]};
+const BITRATES={ultra:40000000,high:16000000,medium:8000000,low:4000000};
+function bitrateFor(res,q){let b=BITRATES[q]||16000000;const floor={'1440':24000000,'2160':45000000}[res];if(floor)b=Math.max(b,floor);return b;}
+function extFor(fmt){return fmt==='mp4'?'mp4':fmt==='mov'?'mov':'webm';}
+
+// WebCodecs availability check
+function canUseWebCodecs(){return typeof window.VideoEncoder==='function' && typeof window.VideoFrame==='function';}
+
+// Pick H.264 codec string with fallback
+async function pickH264Codec(w,h,fps,bitrate){
+  const candidates=['avc1.640034','avc1.640032','avc1.640028','avc1.4d0034','avc1.4d0028','avc1.42e028','avc1.42001f'];
+  for(const codec of candidates){
+    try{const sup=await VideoEncoder.isConfigSupported({codec,width:w,height:h,bitrate,framerate:fps,avc:{format:'avc'}});if(sup.supported)return codec;}catch(e){}
+  }
+  return 'avc1.42001f';
+}
+async function pickVP9Codec(w,h,fps,bitrate){
+  for(const codec of ['vp09.00.50.08','vp09.00.41.08','vp09.00.10.08']){
+    try{const sup=await VideoEncoder.isConfigSupported({codec,width:w,height:h,bitrate,framerate:fps});if(sup.supported)return codec;}catch(e){}
+  }
+  return 'vp09.00.10.08';
+}
+
+// MediaRecorder fallback (WebM only) — exact-duration via real-time playback
+async function exportVideoFallback(opts){
+  const{res,fps,duration,quality,drawFn,setupFn,restoreFn,ui,filename}=opts;
+  const[w,h]=RES_MAP[res]||[1280,720];
+  const totalFrames=Math.round(fps*duration);
+  const msPerFrame=1000/fps;
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;const c=cv.getContext('2d');
+  if(setupFn)setupFn(w,h);
+  const stream=cv.captureStream(0);const track=stream.getVideoTracks()[0];
+  let mime='video/webm;codecs=vp9';if(!MediaRecorder.isTypeSupported(mime))mime='video/webm;codecs=vp8';if(!MediaRecorder.isTypeSupported(mime))mime='video/webm';
+  const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:bitrateFor(res,quality)});
+  let chunks=[];rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
+  rec.start(100);
+  const startWall=performance.now();
+  for(let f=0;f<totalFrames;f++){
+    const t=f*msPerFrame;
+    drawFn(c,t,w,h);
+    if(track.requestFrame)track.requestFrame();
+    if(ui.prog)ui.prog.style.width=((f+1)/totalFrames*94)+'%';
+    if(ui.status)ui.status.textContent=`Frame ${f+1} / ${totalFrames}`;
+    // pace to real-time so recorder timeline matches the target duration exactly
+    const targetWall=startWall+(f+1)*msPerFrame;
+    const wait=targetWall-performance.now();
+    if(wait>0)await new Promise(r=>setTimeout(r,wait));
+  }
+  if(ui.status)ui.status.textContent='Finalizing…';
+  await new Promise(done=>{rec.onstop=()=>{const blob=new Blob(chunks,{type:'video/webm'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=(filename||'animation')+'.webm';a.click();URL.revokeObjectURL(url);if(restoreFn)restoreFn();done();};setTimeout(()=>rec.stop(),300);});
+  return 'webm';
+}
+
+// Main exporter — WebCodecs + muxer for exact frames and real MP4/MOV
+async function exportVideo(opts){
+  const{res,fps,duration,quality,format,drawFn,setupFn,restoreFn,ui,filename}=opts;
+  const[w,h]=RES_MAP[res]||[1280,720];
+  const wantMp4=(format==='mp4'||format==='mov');
+
+  // Fallback if WebCodecs missing or required muxer missing
+  const muxerOk = wantMp4 ? (typeof window.Mp4Muxer!=='undefined') : (typeof window.WebMMuxer!=='undefined');
+  if(!canUseWebCodecs() || !muxerOk){
+    const realExt=await exportVideoFallback(opts);
+    if(wantMp4 && ui.status) ui.status.textContent='⚠ Browser missing WebCodecs/Muxer — exported WebM instead. Use Chrome/Edge for direct MP4/MOV.';
+    return realExt;
+  }
+
+  const totalFrames=Math.round(fps*duration);
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;const c=cv.getContext('2d');
+  if(setupFn)setupFn(w,h);
+
+  const bitrate=bitrateFor(res,quality);
+  let muxer, encoder, ext=extFor(format);
+
+  if(wantMp4){
+    const codec=await pickH264Codec(w,h,fps,bitrate);
+    muxer=new Mp4Muxer.Muxer({
+      target:new Mp4Muxer.ArrayBufferTarget(),
+      video:{codec:'avc',width:w,height:h,frameRate:fps},
+      fastStart:'in-memory',
+      firstTimestampBehavior:'offset'
+    });
+    encoder=new VideoEncoder({
+      output:(chunk,meta)=>muxer.addVideoChunk(chunk,meta),
+      error:e=>console.error('Encoder error',e)
+    });
+    encoder.configure({codec,width:w,height:h,bitrate,framerate:fps,avc:{format:'avc'}});
+  } else {
+    const codec=await pickVP9Codec(w,h,fps,bitrate);
+    muxer=new WebMMuxer.Muxer({
+      target:new WebMMuxer.ArrayBufferTarget(),
+      video:{codec:'V_VP9',width:w,height:h,frameRate:fps},
+      firstTimestampBehavior:'offset'
+    });
+    encoder=new VideoEncoder({
+      output:(chunk,meta)=>muxer.addVideoChunk(chunk,meta),
+      error:e=>console.error('Encoder error',e)
+    });
+    encoder.configure({codec,width:w,height:h,bitrate,framerate:fps});
+  }
+
+  const microPerFrame=Math.round(1000000/fps);
+  const keyEvery=Math.max(1,Math.round(fps*2));
+  for(let f=0;f<totalFrames;f++){
+    const tMs=f*(1000/fps);
+    drawFn(c,tMs,w,h);
+    const frame=new VideoFrame(cv,{timestamp:f*microPerFrame,duration:microPerFrame});
+    encoder.encode(frame,{keyFrame:f%keyEvery===0});
+    frame.close();
+    if(ui.prog)ui.prog.style.width=((f+1)/totalFrames*94)+'%';
+    if(ui.status)ui.status.textContent=`Frame ${f+1} / ${totalFrames}`;
+    // yield occasionally so the encoder queue can drain and UI updates
+    if(f%4===3 || encoder.encodeQueueSize>8){
+      while(encoder.encodeQueueSize>8){await new Promise(r=>setTimeout(r,4));}
+      await new Promise(r=>setTimeout(r,0));
+    }
+  }
+  if(ui.status)ui.status.textContent='Finalizing…';
+  await encoder.flush();
+  encoder.close();
+  muxer.finalize();
+  const buf=muxer.target.buffer;
+  const mime=wantMp4?(format==='mov'?'video/quicktime':'video/mp4'):'video/webm';
+  const blob=new Blob([buf],{type:mime});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=(filename||'animation')+'.'+ext;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  if(restoreFn)restoreFn();
+  return ext;
+}
+
+// ===== STUDIO STATE =====
+const STUDIO_DEFAULTS={base:'waveflow',variant:0,animation:'waveflow_0',speed:1.0,scale:1.0,complexity:5,rotSpeed:0,particles:true,particleCount:80,particleSize:3,pShape:'circle',gradType:'radial',gradIntensity:0.8,bgColor:'#050510',transparentBg:false,vignette:0.5,chroma:0,grain:0,scanlines:0,glowR:0,gridOverlay:false,dotGrid:false,overlayOp:0.15,vFreq:1,vLayers:1,vDir:1,vSym:1,colors:['#7c6fff','#ff6f91','#6fffd4','#ffd96f','#ff6f6f']};
+let params=JSON.parse(JSON.stringify(STUDIO_DEFAULTS));
+const exportParams={res:'720',fps:30,duration:5,quality:'high',format:'webm'};
+
+const BASES=['waveflow','nebula','plasma','vortex','aurora','matrix','lava','circuit','stars','geo','smoke','dna','ripple','kaleid','fireworks','lines','hexgrid','bokeh','lightning','sand','fractal','glitch','abstractFlow','abstractMesh','abstractRings','abstractGrid','abstractBlobs','abstractTriangulate'];
+const CATEGORIES={'All':null,'Waves':['waveflow','aurora','sand','abstractFlow'],'Particles':['stars','bokeh','fireworks','smoke','nebula'],'Geometric':['geo','hexgrid','kaleid','dna','abstractMesh','abstractTriangulate','abstractGrid'],'Plasma':['plasma','vortex','lava','abstractBlobs'],'Tech':['matrix','circuit','glitch','lightning','lines','abstractRings'],'Fractal':['fractal','ripple'],'Abstract':['abstractFlow','abstractMesh','abstractRings','abstractGrid','abstractBlobs','abstractTriangulate']};
+const VTAGS=['','Dense','Sparse','Mega'];
+const BASE_NAMES={waveflow:'Wave Flow',nebula:'Nebula',plasma:'Plasma',vortex:'Vortex',aurora:'Aurora',matrix:'Matrix',lava:'Lava',circuit:'Circuit',stars:'Starfield',geo:'Geometric',smoke:'Smoke',dna:'DNA Helix',ripple:'Ripple',kaleid:'Kaleidoscope',fireworks:'Fireworks',lines:'Flow Lines',hexgrid:'Hex Grid',bokeh:'Bokeh',lightning:'Lightning',sand:'Dunes',fractal:'Fractal',glitch:'Glitch',abstractFlow:'Abstract Flow',abstractMesh:'Abstract Mesh',abstractRings:'Abstract Rings',abstractGrid:'Abstract Grid',abstractBlobs:'Abstract Blobs',abstractTriangulate:'Triangulate'};
+function vmods(v){return [{vFreq:1,vLayers:1,vDir:1,vSym:1,speed:1,complexity:5},{vFreq:1.8,vLayers:2,vDir:1,vSym:2,speed:1.4,complexity:10},{vFreq:0.6,vLayers:1,vDir:-1,vSym:1,speed:0.7,complexity:3},{vFreq:2.5,vLayers:3,vDir:1,vSym:3,speed:1.8,complexity:14}][v];}
+const TEMPLATES=[];BASES.forEach(b=>{for(let v=0;v<4;v++)TEMPLATES.push({id:b+'_'+v,base:b,variant:v,name:BASE_NAMES[b]+(VTAGS[v]?' '+VTAGS[v]:''),desc:(VTAGS[v]||'Classic')+' variation',mods:vmods(v)});});
+
+const canvas=document.getElementById('previewCanvas');const ctx=canvas.getContext('2d');
+let W,H,playing=true,fpsFrames=0,fpsClock=0,animTime=0,lastRAF=null;
+let particles=[],matrixCols=[],blobs=[],stars=[],ripples=[],fwParticles=[],lightningBolts=[],abBlobs=[];
+function getCol(i){const a=params.colors;return a[((i%a.length)+a.length)%a.length]||'#7c6fff';}
+function fV(){return params.vFreq||1;}function fL(){return params.vLayers||1;}function fD(){return params.vDir||1;}
+function resizeCanvas(){const c=canvas.parentElement;W=c.clientWidth;H=c.clientHeight;canvas.width=W;canvas.height=H;document.getElementById('dimBadge').textContent=`${W}×${H}`;initParticles();if(params.base==='matrix')initMatrix();if(params.base==='stars')initStars();if(params.base==='lava')initBlobs();if(params.base==='abstractBlobs')initAbBlobs();}
+
+function initParticles(){particles=[];for(let i=0;i<Math.min(params.particleCount,400);i++)particles.push(newP());}
+function newP(){return{x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*1.5,vy:(Math.random()-.5)*1.5,life:Math.random(),maxLife:0.5+Math.random()*0.5,size:params.particleSize*(0.5+Math.random()),ci:Math.floor(Math.random()*params.colors.length),angle:Math.random()*6.28};}
+function updP(t){const sp=params.speed;while(particles.length<params.particleCount)particles.push(newP());if(particles.length>params.particleCount)particles.length=params.particleCount;for(const p of particles){p.x+=p.vx*sp*0.5;p.y+=p.vy*sp*0.5;p.life+=0.005*sp;p.angle+=0.02*sp;if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;if(p.life>p.maxLife)Object.assign(p,newP());}}
+function drawP(p,c){const a=Math.sin((p.life/p.maxLife)*Math.PI)*0.8;c.save();c.globalAlpha=a;c.fillStyle=getCol(p.ci);c.translate(p.x,p.y);c.rotate(p.angle);const s=p.size;if(params.pShape==='circle'){c.beginPath();c.arc(0,0,s,0,6.28);c.fill();}else if(params.pShape==='square')c.fillRect(-s,-s,s*2,s*2);else if(params.pShape==='triangle'){c.beginPath();c.moveTo(0,-s);c.lineTo(s,s);c.lineTo(-s,s);c.closePath();c.fill();}else{c.beginPath();for(let i=0;i<5;i++){const an=(i*4*Math.PI/5)-1.57,bn=(i*4*Math.PI/5+2*Math.PI/5)-1.57;if(i===0)c.moveTo(Math.cos(an)*s,Math.sin(an)*s);c.lineTo(Math.cos(an)*s,Math.sin(an)*s);c.lineTo(Math.cos(bn)*s*.4,Math.sin(bn)*s*.4);}c.closePath();c.fill();}c.restore();}
+function drawGradientBg(c,t,cW,cH){const cols=params.colors,it=params.gradIntensity,sp=params.speed*0.3;if(params.gradType==='radial'){for(let i=0;i<Math.min(cols.length,5);i++){const a=(i/cols.length)*6.28+t*0.0005*sp,r0=Math.min(cW,cH)*0.3*params.scale,cx=cW/2+Math.cos(a)*cW*0.3,cy=cH/2+Math.sin(a)*cH*0.3;const gr=c.createRadialGradient(cx,cy,0,cx,cy,r0*(1+i*0.1));const{r,g,b}=hexToRgb(cols[i]);gr.addColorStop(0,`rgba(${r},${g},${b},${it*0.6})`);gr.addColorStop(1,`rgba(${r},${g},${b},0)`);c.fillStyle=gr;c.fillRect(0,0,cW,cH);}}else if(params.gradType==='linear'){for(let i=0;i<cols.length;i++){const a=t*0.0003*sp+(i/cols.length)*Math.PI;const gl=c.createLinearGradient(cW/2+Math.cos(a)*cW,cH/2+Math.sin(a)*cH,cW/2-Math.cos(a)*cW,cH/2-Math.sin(a)*cH);const{r,g,b}=hexToRgb(cols[i]);gl.addColorStop(0,`rgba(${r},${g},${b},${it*0.5})`);gl.addColorStop(1,`rgba(${r},${g},${b},0)`);c.fillStyle=gl;c.fillRect(0,0,cW,cH);}}else{c.save();c.translate(cW/2,cH/2);c.rotate(t*0.0002*sp);for(let i=0;i<cols.length;i++){const a1=(i/cols.length)*6.28,a2=((i+1)/cols.length)*6.28;const gl=c.createLinearGradient(0,0,Math.cos((a1+a2)/2)*cW,Math.sin((a1+a2)/2)*cH);const{r,g,b}=hexToRgb(cols[i]);gl.addColorStop(0,`rgba(${r},${g},${b},${it})`);gl.addColorStop(1,`rgba(${r},${g},${b},0)`);c.beginPath();c.moveTo(0,0);c.arc(0,0,Math.max(cW,cH),a1,a2);c.closePath();c.fillStyle=gl;c.fill();}c.restore();}}
+
+// ---- Studio renderers (same proven set) ----
+function drawWaveflow(c,t,cW,cH){const compl=params.complexity,scale=params.scale,sp=params.speed*fD(),layers=Math.ceil(params.colors.length*fL());for(let ci=0;ci<layers;ci++){const{r,g,b}=hexToRgb(getCol(ci));const amp=cH*0.15*scale,freq=compl*0.002*fV(),ph=t*0.0005*sp+ci*0.8,yB=cH*(0.3+(ci%params.colors.length)*0.12);c.beginPath();c.moveTo(0,yB);for(let x=0;x<=cW;x+=2){const nx=x/cW;c.lineTo(x,yB+Math.sin(nx*6.28*freq*10+ph)*amp+Math.sin(nx*6.28*freq*5+ph*1.3)*amp*0.5);}c.lineTo(cW,cH);c.lineTo(0,cH);c.closePath();c.fillStyle=`rgba(${r},${g},${b},${0.12+ci*0.02})`;c.fill();}}
+function drawNebula(c,t,cW,cH){const sp=params.speed,scale=params.scale,compl=params.complexity*fL();for(let i=0;i<compl*3;i++){const px=(simplex2(i*0.3,t*0.0001*sp)*0.5+0.5)*cW,py=(simplex2(i*0.31+10,t*0.00008*sp)*0.5+0.5)*cH,r=(simplex2(i*0.15+5,t*0.00005*sp)*0.5+0.5)*200*scale;const{r:cr,g:cg,b:cb}=hexToRgb(getCol(i));const gr=c.createRadialGradient(px,py,0,px,py,r);gr.addColorStop(0,`rgba(${cr},${cg},${cb},0.3)`);gr.addColorStop(1,`rgba(${cr},${cg},${cb},0)`);c.fillStyle=gr;c.fillRect(0,0,cW,cH);}}
+function drawPlasma(c,t,cW,cH){const compl=params.complexity*fV(),sp=params.speed,scale=params.scale,step=Math.max(4,Math.floor(8/scale));for(let y=0;y<cH;y+=step)for(let x=0;x<cW;x+=step){const nx=x/cW,ny=y/cH,v=Math.sin(nx*compl+t*0.001*sp)+Math.sin(ny*compl+t*0.0012*sp)+Math.sin((nx+ny)*compl*0.5+t*0.0008*sp);const n=(v+3)/6,ci=Math.floor(n*(params.colors.length-1)),ci2=Math.min(ci+1,params.colors.length-1),fr=n*(params.colors.length-1)-ci,c1=hexToRgb(getCol(ci)),c2=hexToRgb(getCol(ci2));c.fillStyle=`rgb(${Math.floor(c1.r*(1-fr)+c2.r*fr)},${Math.floor(c1.g*(1-fr)+c2.g*fr)},${Math.floor(c1.b*(1-fr)+c2.b*fr)})`;c.fillRect(x,y,step,step);}}
+function drawVortex(c,t,cW,cH){const compl=params.complexity,sp=params.speed*fD(),scale=params.scale,cx=cW/2,cy=cH/2,rot=t*0.001*sp,arms=Math.ceil(compl*fL());for(let a=0;a<arms;a++)for(let i=0;i<80;i++){const r=(i/80)*Math.min(cW,cH)*0.5*scale,an=(a/arms)*6.28+(i/80)*12.56*fV()+rot;const{r:cr,g:cg,b:cb}=hexToRgb(getCol(a));c.beginPath();c.arc(cx+Math.cos(an)*r,cy+Math.sin(an)*r,2*scale,0,6.28);c.fillStyle=`rgba(${cr},${cg},${cb},${0.6*(1-i/80)})`;c.fill();}}
+function drawAurora(c,t,cW,cH){const compl=params.complexity,sp=params.speed,scale=params.scale;for(let ci=0;ci<params.colors.length;ci++){const{r,g,b}=hexToRgb(getCol(ci));for(let band=0;band<3;band++){const yO=cH*(0.2+ci*0.08+band*0.04);c.beginPath();c.moveTo(0,yO);for(let x=0;x<=cW;x+=3){const nx=x/cW,freq=compl*0.005*fV();c.lineTo(x,yO+Math.sin(nx*6.28*freq*5+t*0.0005*sp+ci*1.2+band*0.6)*cH*0.08*scale);}c.lineTo(cW,0);c.lineTo(0,0);c.closePath();const gl=c.createLinearGradient(0,0,0,cH);gl.addColorStop(0,`rgba(${r},${g},${b},0)`);gl.addColorStop(0.5,`rgba(${r},${g},${b},${0.15+band*0.05})`);gl.addColorStop(1,`rgba(${r},${g},${b},0)`);c.fillStyle=gl;c.fill();}}}
+function initMatrix(){matrixCols=[];const n=Math.floor((W||1280)/16);for(let i=0;i<n;i++)matrixCols.push({y:Math.random()*(H||720),speed:1+Math.random()*3});}
+function drawMatrix(c,t,cW,cH){const sp=params.speed,compl=params.complexity,ch='01アイウエオカキクケコ';matrixCols.forEach((col,i)=>{const{r,g,b}=hexToRgb(getCol(i));const steps=compl*2;for(let j=0;j<steps;j++){const y=col.y-j*16;if(y<0)continue;c.fillStyle=`rgba(${r},${g},${b},${j===0?1:0.08*((steps-j)/steps)})`;c.font='13px monospace';c.fillText(ch[Math.floor(Math.random()*ch.length)],i*16,y);}col.y+=col.speed*sp*0.5;if(col.y-compl*32>cH)col.y=0;});}
+function initBlobs(){blobs=[];for(let i=0;i<8;i++)blobs.push({x:Math.random()*(W||1280),y:Math.random()*(H||720),vx:(Math.random()-.5)*0.5,vy:(Math.random()-.5)*0.5,r:60+Math.random()*80,ci:i%5});}
+function drawLava(c,t,cW,cH){blobs.forEach(b=>{b.x+=b.vx*params.speed;b.y+=b.vy*params.speed;if(b.x<0||b.x>cW)b.vx*=-1;if(b.y<0||b.y>cH)b.vy*=-1;const cl=hexToRgb(getCol(b.ci));const gr=c.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r*params.scale);gr.addColorStop(0,`rgba(${cl.r},${cl.g},${cl.b},0.5)`);gr.addColorStop(0.6,`rgba(${cl.r},${cl.g},${cl.b},0.2)`);gr.addColorStop(1,`rgba(${cl.r},${cl.g},${cl.b},0)`);c.fillStyle=gr;c.fillRect(0,0,cW,cH);});}
+function drawCircuit(c,t,cW,cH){const compl=params.complexity,sp=params.speed,sg=Math.max(20,80-compl*4),off=(t*0.1*sp)%sg;params.colors.forEach((col,ci)=>{const{r,g,b}=hexToRgb(col);c.strokeStyle=`rgba(${r},${g},${b},0.3)`;c.lineWidth=1;c.setLineDash([4,8]);c.lineDashOffset=-off+ci*10;for(let x=0;x<cW;x+=sg){c.beginPath();c.moveTo(x,0);c.lineTo(x,cH);c.stroke();}for(let y=0;y<cH;y+=sg){c.beginPath();c.moveTo(0,y);c.lineTo(cW,y);c.stroke();}});c.setLineDash([]);}
+function initStars(){stars=[];const n=200+params.complexity*20;for(let i=0;i<n;i++)stars.push({x:Math.random()*(W||1280),y:Math.random()*(H||720),z:Math.random()*(W||1280),pz:0,ci:Math.floor(Math.random()*5)});}
+function drawStars(c,t,cW,cH){stars.forEach(s=>{s.pz=s.z;s.z-=params.speed*3;if(s.z<=0){s.z=cW;s.x=Math.random()*cW;s.y=Math.random()*cH;}const sx=(s.x-cW/2)*(cW/s.z)+cW/2,sy=(s.y-cH/2)*(cW/s.z)+cH/2,psx=(s.x-cW/2)*(cW/Math.max(s.pz,1))+cW/2,psy=(s.y-cH/2)*(cW/Math.max(s.pz,1))+cH/2,sz=(1-s.z/cW)*4*params.scale,a=(1-s.z/cW)*0.8;const{r,g,b}=hexToRgb(getCol(s.ci));c.beginPath();c.moveTo(psx,psy);c.lineTo(sx,sy);c.strokeStyle=`rgba(${r},${g},${b},${a})`;c.lineWidth=sz;c.stroke();});}
+function drawGeo(c,t,cW,cH){const compl=params.complexity,sp=params.speed*fD(),scale=params.scale,cnt=Math.ceil(compl*4*fL());for(let i=0;i<cnt;i++){const a=(i/cnt)*6.28+t*0.0005*sp*(i%2===0?1:-1),r=(i/cnt)*Math.min(cW,cH)*0.45*scale,cx=cW/2+Math.cos(a)*r*0.3,cy=cH/2+Math.sin(a)*r*0.3,sides=3+(i%5);const{r:cr,g:cg,b:cb}=hexToRgb(getCol(i));c.beginPath();for(let s=0;s<=sides;s++){const an=(s/sides)*6.28+a;s===0?c.moveTo(cx+Math.cos(an)*r,cy+Math.sin(an)*r):c.lineTo(cx+Math.cos(an)*r,cy+Math.sin(an)*r);}c.closePath();c.strokeStyle=`rgba(${cr},${cg},${cb},0.4)`;c.lineWidth=1;c.stroke();}}
+function drawSmoke(c,t,cW,cH){const sp=params.speed,compl=params.complexity*fL(),scale=params.scale;for(let i=0;i<compl*4;i++){const sd=i*7.3,px=(simplex2(sd,t*0.00015*sp)*0.4+0.5)*cW,py=cH-(((t*0.05*sp*scale+sd*cH)%cH)),r=30+simplex2(sd*2,t*0.0001)*30*scale,a=0.04+0.04*Math.sin(t*0.001+sd);const{r:cr,g:cg,b:cb}=hexToRgb(getCol(i));const gr=c.createRadialGradient(px,py,0,px,py,r);gr.addColorStop(0,`rgba(${cr},${cg},${cb},${a})`);gr.addColorStop(1,`rgba(${cr},${cg},${cb},0)`);c.fillStyle=gr;c.fillRect(0,0,cW,cH);}}
+function drawDNA(c,t,cW,cH){const sp=params.speed,scale=params.scale,compl=params.complexity,cx=cW/2,sg=cH/(compl*4);c.lineWidth=2;for(let st=0;st<2;st++){c.beginPath();for(let y=0;y<=cH;y+=2){const ph=(y/cH)*6.28*compl+t*0.001*sp+(st?Math.PI:0);const x=cx+Math.cos(ph)*cW*0.18*scale;y===0?c.moveTo(x,y):c.lineTo(x,y);}const{r,g,b}=hexToRgb(getCol(st));c.strokeStyle=`rgba(${r},${g},${b},0.7)`;c.stroke();}for(let y=sg/2;y<cH;y+=sg){const ph=(y/cH)*6.28*compl+t*0.001*sp,x1=cx+Math.cos(ph)*cW*0.18*scale,x2=cx+Math.cos(ph+Math.PI)*cW*0.18*scale;const{r,g,b}=hexToRgb(getCol(Math.floor(y/sg)));c.beginPath();c.moveTo(x1,y);c.lineTo(x2,y);c.strokeStyle=`rgba(${r},${g},${b},0.5)`;c.lineWidth=1.5;c.stroke();}}
+function drawRipple(c,t,cW,cH){const sp=params.speed;if(Math.random()<0.02*sp)ripples.push({x:Math.random()*cW,y:Math.random()*cH,r:0,maxR:80+Math.random()*120,ci:Math.floor(Math.random()*params.colors.length)});ripples=ripples.filter(rp=>rp.r<rp.maxR);ripples.forEach(rp=>{rp.r+=sp*1.2;const a=(1-rp.r/rp.maxR)*0.5;const{r,g,b}=hexToRgb(getCol(rp.ci));c.beginPath();c.arc(rp.x,rp.y,rp.r,0,6.28);c.strokeStyle=`rgba(${r},${g},${b},${a})`;c.lineWidth=2;c.stroke();});}
+function drawKaleid(c,t,cW,cH){const sp=params.speed,compl=params.complexity,scale=params.scale,seg=Math.max(3,Math.floor(compl/1.5)*(params.vSym||1));c.save();c.translate(cW/2,cH/2);for(let s=0;s<seg;s++){c.save();c.rotate((s/seg)*6.28);for(let i=0;i<5;i++){const r=(i+1)*50*scale,a=t*0.0005*sp*(i%2===0?1:-1)+i;const{r:cr,g:cg,b:cb}=hexToRgb(getCol(i+s));c.beginPath();c.arc(Math.cos(a)*r*0.5,Math.sin(a)*r*0.5,20*scale,0,6.28);c.fillStyle=`rgba(${cr},${cg},${cb},0.15)`;c.fill();}c.restore();}c.restore();}
+function drawFireworks(c,t,cW,cH){const sp=params.speed;if(Math.random()<0.025*sp){const cx=cW*0.2+Math.random()*cW*0.6,cy=cH*0.1+Math.random()*cH*0.4,ci=Math.floor(Math.random()*params.colors.length);for(let i=0;i<40;i++){const a=Math.random()*6.28,s=1+Math.random()*4;fwParticles.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,ci});}}fwParticles=fwParticles.filter(p=>p.life>0);fwParticles.forEach(p=>{p.x+=p.vx*sp;p.y+=p.vy*sp;p.vy+=0.05*sp;p.vx*=0.98;p.life-=0.015*sp;const{r,g,b}=hexToRgb(getCol(p.ci));c.beginPath();c.arc(p.x,p.y,2,0,6.28);c.fillStyle=`rgba(${r},${g},${b},${p.life})`;c.fill();});}
+function drawFlowLines(c,t,cW,cH){const sp=params.speed,compl=params.complexity*fV(),scale=params.scale,cols=Math.ceil(cW/(30/Math.max(1,scale*0.5))),rows=Math.ceil(cH/(30/Math.max(1,scale*0.5))),sx=cW/cols,sy=cH/rows;for(let row=0;row<=rows;row++){c.beginPath();for(let col=0;col<=cols;col++){const x=col*sx,y=row*sy,a=simplex2(x*0.003*compl+t*0.0003*sp,y*0.003*compl)*12.56,len=sx*0.8;col===0?c.moveTo(x+Math.cos(a)*len,y+Math.sin(a)*len):c.lineTo(x+Math.cos(a)*len,y+Math.sin(a)*len);}const{r,g,b}=hexToRgb(getCol(row));c.strokeStyle=`rgba(${r},${g},${b},0.25)`;c.lineWidth=1;c.stroke();}}
+function drawHexGrid(c,t,cW,cH){const sp=params.speed,scale=params.scale,compl=params.complexity,size=Math.max(10,40*scale/Math.max(1,compl*0.3)),w2=size*1.732,hGap=w2,vGap=size*2*0.75;for(let row=-1;row<cH/vGap+2;row++)for(let col=-1;col<cW/hGap+2;col++){const cx=col*hGap+(row%2===0?0:hGap/2),cy=row*vGap,ph=Math.sin(cx*0.01+cy*0.01+t*0.001*sp),a=0.1+0.15*(ph*0.5+0.5);const{r,g,b}=hexToRgb(getCol(Math.floor((cx/cW*params.colors.length+row))));c.beginPath();for(let i=0;i<6;i++){const an=(i/6)*6.28+0.523;c.lineTo(cx+Math.cos(an)*size,cy+Math.sin(an)*size);}c.closePath();c.fillStyle=`rgba(${r},${g},${b},${a})`;c.fill();c.strokeStyle=`rgba(${r},${g},${b},0.3)`;c.stroke();}}
+function drawBokeh(c,t,cW,cH){const sp=params.speed,compl=params.complexity*fL(),cnt=compl*5;for(let i=0;i<cnt;i++){const sd=i*13.7,x=(simplex2(sd,t*0.0001*sp)*0.5+0.5)*cW,y=(simplex2(sd*2,t*0.00008*sp)*0.5+0.5)*cH,r=20+simplex2(sd*3,0)*30,a=0.05+0.1*(simplex2(sd*4,t*0.0005*sp)*0.5+0.5);const{r:cr,g:cg,b:cb}=hexToRgb(getCol(i));const gr=c.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,`rgba(${cr},${cg},${cb},${a*2})`);gr.addColorStop(1,`rgba(${cr},${cg},${cb},0)`);c.fillStyle=gr;c.fillRect(0,0,cW,cH);}}
+function drawLightning(c,t,cW,cH){const sp=params.speed;if(Math.random()<0.04*sp||lightningBolts.length===0){const bolt=[],x=Math.random()*cW;let cy=0;bolt.push({x,y:0});while(cy<cH){cy+=10+Math.random()*20;bolt.push({x:x+(Math.random()-.5)*60,y:cy});}lightningBolts.push({segments:bolt,life:1,ci:Math.floor(Math.random()*params.colors.length)});}lightningBolts=lightningBolts.filter(b=>b.life>0);lightningBolts.forEach(bolt=>{bolt.life-=0.05*sp;const{r,g,b}=hexToRgb(getCol(bolt.ci));c.beginPath();bolt.segments.forEach((pt,i)=>i===0?c.moveTo(pt.x,pt.y):c.lineTo(pt.x,pt.y));c.strokeStyle=`rgba(${r},${g},${b},${bolt.life})`;c.lineWidth=2;c.stroke();});}
+function drawSand(c,t,cW,cH){const sp=params.speed,compl=params.complexity*fV(),scale=params.scale;for(let li=0;li<params.colors.length;li++){const{r,g,b}=hexToRgb(getCol(li));const yB=cH*(0.4+li*0.1);c.beginPath();c.moveTo(0,cH);c.lineTo(0,yB);for(let x=0;x<=cW;x+=3){const nx=x/cW;c.lineTo(x,yB+Math.sin(nx*Math.PI*compl+t*0.0003*sp*(li%2===0?1:-1))*30*scale+simplex2(nx*compl*2+li,t*0.0001*sp)*20*scale);}c.lineTo(cW,cH);c.closePath();c.fillStyle=`rgba(${r},${g},${b},0.35)`;c.fill();}}
+function fBranch(c,x,y,a,len,d,t,md){if(d>md||len<2)return;const ex=x+Math.cos(a)*len,ey=y+Math.sin(a)*len;const{r,g,b}=hexToRgb(getCol(d));c.beginPath();c.moveTo(x,y);c.lineTo(ex,ey);c.strokeStyle=`rgba(${r},${g},${b},${0.8-d*0.06})`;c.lineWidth=Math.max(0.5,(md-d)*0.8);c.stroke();const sp=0.3+Math.sin(t*0.001+d)*0.1;fBranch(c,ex,ey,a-sp,len*0.7,d+1,t,md);fBranch(c,ex,ey,a+sp,len*0.7,d+1,t,md);}
+function drawFractal(c,t,cW,cH){const compl=Math.min(params.complexity,12),scale=params.scale;fBranch(c,cW/2,cH,-1.57+Math.sin(t*0.0005)*0.2,cH*0.22*scale,0,t,Math.min(compl,9));}
+function drawGlitch(c,t,cW,cH){const sp=params.speed,compl=params.complexity,n=3+Math.floor(Math.random()*compl);for(let i=0;i<n;i++){const y=Math.random()*cH,h=2+Math.random()*20,off=(Math.random()-.5)*40*sp;const{r,g,b}=hexToRgb(getCol(i));c.fillStyle=`rgba(${r},${g},${b},0.15)`;c.fillRect(off,y,cW,h);}}
+function drawAbstractFlow(c,t,cW,cH){const sp=params.speed,compl=params.complexity*fV(),scale=params.scale,lines=Math.ceil(40*fL());for(let i=0;i<lines;i++){const{r,g,b}=hexToRgb(getCol(i));const yo=(i/lines)*cH;c.beginPath();for(let x=0;x<=cW;x+=6)c.lineTo(x,yo+simplex2(x*0.002*compl+t*0.0004*sp,i*0.2)*cH*0.25*scale);c.strokeStyle=`rgba(${r},${g},${b},0.18)`;c.lineWidth=1.4;c.stroke();}}
+function drawAbstractMesh(c,t,cW,cH){const sp=params.speed,compl=Math.max(3,Math.floor(params.complexity*fL())),pts=[];for(let i=0;i<compl*2;i++)pts.push({x:(simplex2(i,t*0.0002*sp)*0.5+0.5)*cW,y:(simplex2(i+99,t*0.00018*sp)*0.5+0.5)*cH,ci:i});pts.forEach((p,i)=>{pts.forEach((q,j)=>{if(j<=i)return;const d=Math.hypot(p.x-q.x,p.y-q.y);if(d<cW*0.25){const{r,g,b}=hexToRgb(getCol(i));c.beginPath();c.moveTo(p.x,p.y);c.lineTo(q.x,q.y);c.strokeStyle=`rgba(${r},${g},${b},${0.25*(1-d/(cW*0.25))})`;c.lineWidth=1;c.stroke();}});const{r,g,b}=hexToRgb(getCol(p.ci));c.beginPath();c.arc(p.x,p.y,3,0,6.28);c.fillStyle=`rgba(${r},${g},${b},0.8)`;c.fill();});}
+function drawAbstractRings(c,t,cW,cH){const sp=params.speed*fD(),compl=params.complexity,scale=params.scale,cx=cW/2,cy=cH/2,count=Math.ceil(compl*2*fL());for(let i=0;i<count;i++){const r=((i/count)*Math.min(cW,cH)*0.6+Math.sin(t*0.001*sp+i)*20)*scale;const{r:cr,g:cg,b:cb}=hexToRgb(getCol(i));c.beginPath();c.arc(cx,cy,Math.abs(r),0,6.28);c.strokeStyle=`rgba(${cr},${cg},${cb},0.3)`;c.lineWidth=2;c.stroke();}}
+function drawAbstractGrid(c,t,cW,cH){const sp=params.speed,compl=params.complexity,scale=params.scale,cell=Math.max(20,60/Math.max(1,compl*0.2))*scale;for(let x=0;x<cW;x+=cell)for(let y=0;y<cH;y+=cell){const ph=Math.sin(x*0.01+y*0.01+t*0.001*sp),s=cell*0.4*(0.5+ph*0.5);const{r,g,b}=hexToRgb(getCol(Math.floor((x+y)/cell)));c.save();c.translate(x+cell/2,y+cell/2);c.rotate(t*0.0005*sp+ph);c.fillStyle=`rgba(${r},${g},${b},${0.2+ph*0.2})`;c.fillRect(-s/2,-s/2,s,s);c.restore();}}
+function initAbBlobs(){abBlobs=[];for(let i=0;i<10;i++)abBlobs.push({x:Math.random()*(W||1280),y:Math.random()*(H||720),vx:(Math.random()-.5),vy:(Math.random()-.5),r:50+Math.random()*100,ci:i%5});}
+function drawAbstractBlobs(c,t,cW,cH){abBlobs.forEach(b=>{b.x+=b.vx*params.speed;b.y+=b.vy*params.speed;if(b.x<-b.r)b.x=cW+b.r;if(b.x>cW+b.r)b.x=-b.r;if(b.y<-b.r)b.y=cH+b.r;if(b.y>cH+b.r)b.y=-b.r;const cl=hexToRgb(getCol(b.ci));const gr=c.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r*params.scale);gr.addColorStop(0,`rgba(${cl.r},${cl.g},${cl.b},0.45)`);gr.addColorStop(1,`rgba(${cl.r},${cl.g},${cl.b},0)`);c.fillStyle=gr;c.fillRect(0,0,cW,cH);});}
+function drawAbstractTriangulate(c,t,cW,cH){const sp=params.speed,compl=Math.max(4,Math.floor(params.complexity*fL())),cols=compl,rows=Math.ceil(compl*cH/cW),sx=cW/cols,sy=cH/rows;for(let r=0;r<rows;r++)for(let col=0;col<cols;col++){const j=(rr,cc)=>simplex2(rr*3.1+cc*1.7,t*0.0003*sp)*sx*0.4;const x1=col*sx+j(r,col),y1=r*sy+j(r+1,col),x2=(col+1)*sx+j(r,col+1),y2=r*sy+j(r+2,col),x3=col*sx+j(r+1,col),y3=(r+1)*sy+j(r,col+3);const{r:cr,g:cg,b:cb}=hexToRgb(getCol(r+col));c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.lineTo(x3,y3);c.closePath();c.fillStyle=`rgba(${cr},${cg},${cb},${0.08+0.06*Math.sin(t*0.001+r+col)})`;c.fill();}}
+const RENDERERS={waveflow:drawWaveflow,nebula:drawNebula,plasma:drawPlasma,vortex:drawVortex,aurora:drawAurora,matrix:drawMatrix,lava:drawLava,circuit:drawCircuit,stars:drawStars,geo:drawGeo,smoke:drawSmoke,dna:drawDNA,ripple:drawRipple,kaleid:drawKaleid,fireworks:drawFireworks,lines:drawFlowLines,hexgrid:drawHexGrid,bokeh:drawBokeh,lightning:drawLightning,sand:drawSand,fractal:drawFractal,glitch:drawGlitch,abstractFlow:drawAbstractFlow,abstractMesh:drawAbstractMesh,abstractRings:drawAbstractRings,abstractGrid:drawAbstractGrid,abstractBlobs:drawAbstractBlobs,abstractTriangulate:drawAbstractTriangulate};
+function drawAnimation(c,t,cW,cH){(RENDERERS[params.base]||drawWaveflow)(c,t,cW,cH);}
+function renderFrame(c,t,cW,cH){c.clearRect(0,0,cW,cH);if(!params.transparentBg){c.fillStyle=params.bgColor;c.fillRect(0,0,cW,cH);}drawGradientBg(c,t,cW,cH);c.save();if(params.rotSpeed>0){c.translate(cW/2,cH/2);c.rotate(t*params.rotSpeed*0.0001);c.translate(-cW/2,-cH/2);}drawAnimation(c,t,cW,cH);c.restore();}
+function postFX(c,t,cW,cH,live){if(params.grain>0&&live){const id=c.getImageData(0,0,cW,cH),d=id.data,s=params.grain*80;for(let i=0;i<d.length;i+=4){const n=(Math.random()-.5)*s;d[i]+=n;d[i+1]+=n;d[i+2]+=n;}c.putImageData(id,0,0);}if(params.scanlines>0){c.save();c.globalAlpha=params.scanlines*0.4;for(let y=0;y<cH;y+=3){c.fillStyle='#000';c.fillRect(0,y,cW,1);}c.restore();}if(params.vignette>0){const gr=c.createRadialGradient(cW/2,cH/2,Math.min(cW,cH)*0.3,cW/2,cH/2,Math.min(cW,cH)*0.9);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(1,`rgba(0,0,0,${params.vignette})`);c.fillStyle=gr;c.fillRect(0,0,cW,cH);}if(params.gridOverlay){c.save();c.globalAlpha=params.overlayOp;c.strokeStyle='#fff';c.lineWidth=0.5;for(let x=0;x<cW;x+=40){c.beginPath();c.moveTo(x,0);c.lineTo(x,cH);c.stroke();}for(let y=0;y<cH;y+=40){c.beginPath();c.moveTo(0,y);c.lineTo(cW,y);c.stroke();}c.restore();}if(params.dotGrid){c.save();c.globalAlpha=params.overlayOp;for(let x=10;x<cW;x+=20)for(let y=10;y<cH;y+=20){c.beginPath();c.arc(x,y,1,0,6.28);c.fillStyle='#fff';c.fill();}c.restore();}}
+function render(rt){requestAnimationFrame(render);if(currentPage!=='studio'||!playing){lastRAF=rt;return;}const dt=lastRAF?Math.min(rt-lastRAF,100):16.67;lastRAF=rt;animTime+=dt;fpsFrames++;fpsClock+=dt;if(fpsClock>=500){document.getElementById('fpsDisplay').textContent=Math.round(fpsFrames*1000/fpsClock)+' FPS';fpsFrames=0;fpsClock=0;}document.getElementById('timeDisplay').textContent=(animTime/1000).toFixed(2)+'s';const t=animTime;renderFrame(ctx,t,W,H);if(params.particles&&params.particleCount>0){updP(t);for(const p of particles)drawP(p,ctx);}postFX(ctx,t,W,H,true);}
+
+// ===== STUDIO UI =====
+let activeCat='All';
+function buildCatChips(){const w=document.getElementById('catChips');w.innerHTML='';Object.keys(CATEGORIES).forEach(cat=>{const d=document.createElement('div');d.className='chip'+(cat===activeCat?' active':'');d.textContent=cat;d.onclick=()=>{activeCat=cat;buildCatChips();buildPresetGrid(document.getElementById('tplSearch').value);};w.appendChild(d);});}
+function buildPresetGrid(filter=''){const grid=document.getElementById('presetGrid');grid.innerHTML='';const allowed=CATEGORIES[activeCat],f=(filter||'').toLowerCase();const shown=TEMPLATES.filter(tp=>{if(allowed&&!allowed.includes(tp.base))return false;if(f&&!tp.name.toLowerCase().includes(f))return false;return true;});document.getElementById('tplCount').textContent=shown.length;shown.forEach(tp=>{const d=document.createElement('div');d.className='preset-card'+(tp.id===params.animation?' active':'');d.innerHTML=`<div class="preset-name">${tp.name}</div><div class="preset-desc">${tp.desc}</div>`;d.onclick=()=>{applyTemplate(tp);buildPresetGrid(document.getElementById('tplSearch').value);};grid.appendChild(d);});}
+function applyTemplate(tp){params.animation=tp.id;params.base=tp.base;params.variant=tp.variant;const m=tp.mods||{};params.vFreq=m.vFreq||1;params.vLayers=m.vLayers||1;params.vDir=m.vDir||1;params.vSym=m.vSym||1;if(m.speed!=null){params.speed=m.speed;setSlider('speed',m.speed);}if(m.complexity!=null){params.complexity=m.complexity;setSlider('complexity',m.complexity);}onAnimationChange();}
+function setSlider(k,v){const sl=document.getElementById('sl-'+k);if(sl)sl.value=v;const vd=document.getElementById('val-'+k);if(vd)vd.textContent=Number.isInteger(v)?v:(+v).toFixed(1)+(k==='speed'?'×':'');}
+function buildColorSwatches(){buildSwatches('colorSwatches',params.colors,buildColorSwatches);}
+function buildPaletteChips(){buildChips('paletteChips',(n,el)=>{params.colors=[...PALETTES[n]];buildColorSwatches();document.querySelectorAll('#paletteChips .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');});}
+function updateParam(k,v){params[k]=v;const el=document.getElementById('val-'+k);if(el&&typeof v==='number')el.textContent=Number.isInteger(v)?v:(+v).toFixed(2)+(k==='speed'?'×':'');}
+function setChip(el,p,v){document.querySelectorAll(`[data-group="${p}"]`).forEach(c=>c.classList.remove('active'));el.classList.add('active');params[p]=v;}
+function switchTab(n){['animation','colors','effects','export'].forEach(t=>{document.getElementById('panel-'+t).style.display=t===n?'flex':'none';document.getElementById('tab-'+t).classList.toggle('active',t===n);});}
+function togglePlay(){playing=!playing;document.getElementById('toolbarPlayIcon').innerHTML=playing?'<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>':'<path d="M8 5v14l11-7z"/>';}
+function resetAnimation(){animTime=0;onAnimationChange();}
+function onAnimationChange(){const tp=TEMPLATES.find(a=>a.id===params.animation);document.getElementById('animBadge').textContent=tp?tp.name:'';ripples=[];fwParticles=[];lightningBolts=[];if(params.base==='matrix')initMatrix();if(params.base==='lava')initBlobs();if(params.base==='stars')initStars();if(params.base==='abstractBlobs')initAbBlobs();}
+function updateExportParam(k,v){exportParams[k]=v;const d=exportParams.duration,fps=exportParams.fps,res=exportParams.res,L={'480':'854×480','720':'1280×720','1080':'1920×1080','1440':'2560×1440','2160':'3840×2160'};document.getElementById('exp-info').textContent=`${d}s · ${fps} FPS · ${L[res]} → ${Math.round(d*fps)} frames`;const wn=document.getElementById('exp-warn');if(res==='2160'||res==='1440'){wn.style.display='block';wn.textContent='⚠ '+(res==='2160'?'4K':'2K')+' renders slowly.';}else wn.style.display='none';}
+function applyStudioSliders(){['speed','scale','complexity','rotSpeed'].forEach(k=>setSlider(k,params[k]));['chroma','grain','scanlines','glowR','vignette','overlayOp'].forEach(k=>{const sl=document.getElementById('sl-'+k);if(sl)sl.value=params[k];const vd=document.getElementById('val-'+k);if(vd)vd.textContent=Number.isInteger(params[k])?params[k]:(+params[k]).toFixed(2);});const pc=document.getElementById('sl-particleCount');if(pc)pc.value=params.particleCount;document.getElementById('val-particleCount').textContent=params.particleCount;const ps=document.getElementById('sl-particleSize');if(ps)ps.value=params.particleSize;document.getElementById('val-particleSize').textContent=params.particleSize;document.getElementById('cb-particles').checked=params.particles;document.getElementById('cb-transparentBg').checked=params.transparentBg;document.getElementById('cb-gridOverlay').checked=params.gridOverlay;document.getElementById('cb-dotGrid').checked=params.dotGrid;document.getElementById('bgColor').value=params.bgColor;}
+function resetEffects(){const d=STUDIO_DEFAULTS;['chroma','grain','scanlines','glowR','vignette','gridOverlay','dotGrid','overlayOp'].forEach(k=>params[k]=d[k]);applyStudioSliders();}
+function resetStudio(){params=JSON.parse(JSON.stringify(STUDIO_DEFAULTS));activeCat='All';animTime=0;applyStudioSliders();document.querySelectorAll('[data-group="pShape"]').forEach((c,i)=>c.classList.toggle('active',i===0));document.querySelectorAll('[data-group="gradType"]').forEach((c,i)=>c.classList.toggle('active',i===0));buildCatChips();buildPresetGrid();buildColorSwatches();buildPaletteChips();initParticles();onAnimationChange();}
+function randomizeAnimation(){const tp=pick(TEMPLATES);applyTemplate(tp);const heavy=['plasma','matrix','abstractTriangulate','glitch'];params.speed=+rand(0.4,heavy.includes(tp.base)?1.4:2.4).toFixed(1);params.scale=+rand(0.7,1.8).toFixed(1);params.complexity=Math.floor(rand(3,heavy.includes(tp.base)?9:15));params.rotSpeed=Math.random()<0.4?+rand(0,1.5).toFixed(1):0;['speed','scale','complexity','rotSpeed'].forEach(k=>setSlider(k,params[k]));buildPresetGrid(document.getElementById('tplSearch').value);onAnimationChange();}
+function randomizeColors(){params.colors=[...PALETTES[pick(Object.keys(PALETTES))]];params.bgColor=hslToHex(Math.random()*360,50,5);document.getElementById('bgColor').value=params.bgColor;buildColorSwatches();}
+function randomizeEffects(){params.grain=+rand(0,0.25).toFixed(2);params.scanlines=Math.random()>0.7?+rand(0,0.3).toFixed(2):0;params.chroma=Math.random()>0.6?+rand(0,4).toFixed(1):0;params.vignette=+rand(0.2,0.6).toFixed(2);params.glowR=Math.random()>0.5?Math.floor(rand(0,15)):0;applyStudioSliders();}
+let exporting=false;
+async function startExport(){if(exporting)return;exporting=true;const btn=document.getElementById('exportBtn'),bar=document.getElementById('expProgressBar'),prog=document.getElementById('expProgress'),status=document.getElementById('expStatus');btn.disabled=true;btn.textContent='Rendering…';bar.style.display='block';prog.style.width='0%';const sW=W,sH=H,saved={particles,matrixCols,blobs,stars,ripples,fwParticles,lightningBolts,abBlobs};await exportVideo({res:exportParams.res,fps:exportParams.fps,duration:exportParams.duration,quality:exportParams.quality,format:exportParams.format,filename:'bg-animation',ui:{prog,status},setupFn:(w,h)=>{W=w;H=h;particles=[];ripples=[];fwParticles=[];lightningBolts=[];initParticles();if(params.base==='matrix')initMatrix();if(params.base==='stars')initStars();if(params.base==='lava')initBlobs();if(params.base==='abstractBlobs')initAbBlobs();},drawFn:(c,t,w,h)=>{const at=t*params.speed;renderFrame(c,at,w,h);if(params.particles&&params.particleCount>0){updP(at);for(const p of particles)drawP(p,c);}postFX(c,at,w,h,false);},restoreFn:()=>{W=sW;H=sH;particles=saved.particles;matrixCols=saved.matrixCols;blobs=saved.blobs;stars=saved.stars;ripples=saved.ripples;fwParticles=saved.fwParticles;lightningBolts=saved.lightningBolts;abBlobs=saved.abBlobs;}});prog.style.width='100%';status.textContent='✓ Downloaded .'+ (exportParams.format||'webm').toUpperCase()+'!';setTimeout(()=>{bar.style.display='none';status.textContent='';},9000);btn.disabled=false;btn.textContent='Render & Download';exporting=false;}
+function exportPNG(){const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='bg-screenshot.png';a.click();}
+function openExportTab(){switchTab('export');}
+</script>
+<script>
+// ===== BLOB PAGE =====
+const BLOB_DEFAULTS={template:'metaballs_0',base:'metaballs',direction:'random',count:8,size:120,speed:1.0,wobble:0.5,blur:20,bgColor:'#070710',colors:['#7c6fff','#ff6f91','#6fffd4','#ffd96f']};
+let blobP=JSON.parse(JSON.stringify(BLOB_DEFAULTS));
+const blobExport={res:'720',fps:30,duration:5,quality:'high',format:'webm'};
+
+// 8 base styles
+const BLOB_BASES=['metaballs','glow','outline','gradient','liquid','neon','lava','plasmaB'];
+const BLOB_BASE_NAMES={metaballs:'Metaballs',glow:'Soft Glow',outline:'Outline',gradient:'Gradient Orbs',liquid:'Liquid',neon:'Neon',lava:'Lava',plasmaB:'Plasma Field'};
+const BLOB_CATS={'All':null,'Merge':['metaballs','liquid','lava','plasmaB'],'Glow':['glow','gradient','neon'],'Line':['outline','neon']};
+// 14 variations × 8 bases = 112 templates. Each variation tweaks count/size/wobble/blur multipliers.
+const BLOB_VARS=[
+ {t:'',          cM:1,  sM:1,   wM:1,   bM:1},
+ {t:'Dense',     cM:2,  sM:0.8, wM:1,   bM:1.2},
+ {t:'Sparse',    cM:0.5,sM:1.4, wM:0.7, bM:1},
+ {t:'Giant',     cM:0.5,sM:2,   wM:1.2, bM:1.4},
+ {t:'Tiny',      cM:2.5,sM:0.4, wM:0.8, bM:0.6},
+ {t:'Calm',      cM:1,  sM:1.1, wM:0.3, bM:1},
+ {t:'Wild',      cM:1.3,sM:1,   wM:1,   bM:0.8},
+ {t:'Soft',      cM:1,  sM:1.2, wM:0.6, bM:1.6},
+ {t:'Sharp',     cM:1,  sM:0.9, wM:0.5, bM:0.3},
+ {t:'Swarm',     cM:3,  sM:0.6, wM:0.9, bM:0.9},
+ {t:'Bubble',    cM:1.5,sM:1,   wM:1,   bM:1.3},
+ {t:'Mega',      cM:0.7,sM:2.4, wM:1.3, bM:1.5},
+ {t:'Fine',      cM:2,  sM:0.7, wM:0.7, bM:0.7},
+ {t:'Drift',     cM:1,  sM:1.3, wM:0.8, bM:1.1},
+];
+const BLOB_TEMPLATES=[];
+BLOB_BASES.forEach(base=>{BLOB_VARS.forEach((v,vi)=>{BLOB_TEMPLATES.push({id:base+'_'+vi,base,vi,name:BLOB_BASE_NAMES[base]+(v.t?' '+v.t:''),desc:(v.t||'Classic')+' style',v});});});
+const BLOB_DIRS=[{id:'random',n:'Random'},{id:'up',n:'Up'},{id:'down',n:'Down'},{id:'left',n:'Left'},{id:'right',n:'Right'},{id:'in',n:'Inward'},{id:'out',n:'Outward'},{id:'swirl',n:'Swirl'}];
+
+const blobCanvas=document.getElementById('blobCanvas');const bctx=blobCanvas.getContext('2d');
+let bW,bH,blobPlaying=true,blobTime=0,blobLastRAF=null,blobScene=[],blobActiveCat='All';
+function resizeBlob(){const c=blobCanvas.parentElement;bW=c.clientWidth;bH=c.clientHeight;blobCanvas.width=bW;blobCanvas.height=bH;document.getElementById('blobDimBadge').textContent=`${bW}×${bH}`;initBlobScene();}
+function blobVar(){const tp=BLOB_TEMPLATES.find(t=>t.id===blobP.template);return tp?tp.v:BLOB_VARS[0];}
+function effCount(){return Math.max(2,Math.round(blobP.count*blobVar().cM));}
+function effSize(){return blobP.size*blobVar().sM;}
+function effWobble(){return Math.min(1,blobP.wobble*blobVar().wM);}
+function effBlur(){return blobP.blur*blobVar().bM;}
+function blobVel(dir){const sp=blobP.speed;switch(dir){case'up':return{vx:rand(-0.3,0.3),vy:-rand(0.5,1.5)*sp};case'down':return{vx:rand(-0.3,0.3),vy:rand(0.5,1.5)*sp};case'left':return{vx:-rand(0.5,1.5)*sp,vy:rand(-0.3,0.3)};case'right':return{vx:rand(0.5,1.5)*sp,vy:rand(-0.3,0.3)};default:return{vx:rand(-1,1)*sp,vy:rand(-1,1)*sp};}}
+function initBlobScene(w,h){const W2=w||bW,H2=h||bH;blobScene=[];const n=effCount(),sz=effSize();for(let i=0;i<n;i++){const v=blobVel(blobP.direction);blobScene.push({x:Math.random()*W2,y:Math.random()*H2,vx:v.vx,vy:v.vy,r:sz*(0.5+Math.random()*0.8),ci:i%blobP.colors.length,ph:Math.random()*6.28});}}
+function moveBlob(b,t,W2,H2){const sp=blobP.speed;if(blobP.direction==='in'){const dx=W2/2-b.x,dy=H2/2-b.y,d=Math.hypot(dx,dy)||1;b.x+=dx/d*sp;b.y+=dy/d*sp;if(d<30){b.x=Math.random()*W2;b.y=Math.random()*H2;}}else if(blobP.direction==='out'){const dx=b.x-W2/2,dy=b.y-H2/2,d=Math.hypot(dx,dy)||1;b.x+=dx/d*sp;b.y+=dy/d*sp;if(b.x<-b.r||b.x>W2+b.r||b.y<-b.r||b.y>H2+b.r){b.x=W2/2+rand(-20,20);b.y=H2/2+rand(-20,20);}}else if(blobP.direction==='swirl'){const cx=W2/2,cy=H2/2,dx=b.x-cx,dy=b.y-cy,rad=Math.hypot(dx,dy)||1,a=Math.atan2(dy,dx)+0.02*sp;b.x=cx+Math.cos(a)*rad;b.y=cy+Math.sin(a)*rad;}else{b.x+=b.vx;b.y+=b.vy;const m=b.r;if(b.x<-m)b.x=W2+m;if(b.x>W2+m)b.x=-m;if(b.y<-m)b.y=H2+m;if(b.y>H2+m)b.y=-m;}b.ph+=0.02*sp;}
+function blobRadius(b,t){return b.r*(1+Math.sin(b.ph+t*0.002)*0.18*effWobble());}
+function drawBlobFrame(c,t,W2,H2){c.clearRect(0,0,W2,H2);c.fillStyle=blobP.bgColor;c.fillRect(0,0,W2,H2);const base=blobVar()&&BLOB_TEMPLATES.find(x=>x.id===blobP.template)?BLOB_TEMPLATES.find(x=>x.id===blobP.template).base:blobP.base;const merge=(base==='metaballs'||base==='liquid'||base==='lava'||base==='plasmaB');const bl=effBlur();if(merge&&bl>0){c.save();c.filter=`blur(${bl}px)`;}
+  blobScene.forEach(b=>{moveBlob(b,t,W2,H2);const r=blobRadius(b,t);const cl=hexToRgb(blobP.colors[b.ci%blobP.colors.length]);
+    if(base==='outline'){c.beginPath();c.arc(b.x,b.y,r,0,6.28);c.strokeStyle=`rgba(${cl.r},${cl.g},${cl.b},0.8)`;c.lineWidth=2;c.stroke();}
+    else if(base==='neon'){c.save();c.shadowColor=`rgb(${cl.r},${cl.g},${cl.b})`;c.shadowBlur=25;c.beginPath();c.arc(b.x,b.y,r,0,6.28);c.strokeStyle=`rgb(${cl.r},${cl.g},${cl.b})`;c.lineWidth=3;c.stroke();c.restore();}
+    else if(base==='glow'||base==='gradient'||base==='plasmaB'){const gr=c.createRadialGradient(b.x,b.y,0,b.x,b.y,r);gr.addColorStop(0,`rgba(${cl.r},${cl.g},${cl.b},${base==='gradient'?0.9:0.6})`);gr.addColorStop(1,`rgba(${cl.r},${cl.g},${cl.b},0)`);c.fillStyle=gr;c.beginPath();c.arc(b.x,b.y,r,0,6.28);c.fill();}
+    else if(base==='lava'){const gr=c.createRadialGradient(b.x,b.y,0,b.x,b.y,r);gr.addColorStop(0,`rgba(${cl.r},${cl.g},${cl.b},0.95)`);gr.addColorStop(0.7,`rgba(${cl.r},${cl.g},${cl.b},0.5)`);gr.addColorStop(1,`rgba(${cl.r},${cl.g},${cl.b},0)`);c.fillStyle=gr;c.beginPath();c.arc(b.x,b.y,r,0,6.28);c.fill();}
+    else{c.beginPath();c.arc(b.x,b.y,r,0,6.28);c.fillStyle=`rgb(${cl.r},${cl.g},${cl.b})`;c.fill();}
+  });
+  if(merge&&bl>0)c.restore();}
+function blobRender(rt){requestAnimationFrame(blobRender);if(currentPage!=='blob'||!blobPlaying){blobLastRAF=rt;return;}const dt=blobLastRAF?Math.min(rt-blobLastRAF,100):16.67;blobLastRAF=rt;blobTime+=dt;document.getElementById('blobTimeDisplay').textContent=(blobTime/1000).toFixed(2)+'s';drawBlobFrame(bctx,blobTime,bW,bH);}
+function toggleBlobPlay(){blobPlaying=!blobPlaying;document.getElementById('blobPlayIcon').innerHTML=blobPlaying?'<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>':'<path d="M8 5v14l11-7z"/>';const sb=document.getElementById('blobStatusBadge');sb.textContent=blobPlaying?'LIVE':'PAUSED';sb.className='preview-badge'+(blobPlaying?' live live-dot':'');}
+function switchBlobTab(n){['design','export'].forEach(t=>{document.getElementById('bpanel-'+t).style.display=t===n?'flex':'none';document.getElementById('btab-'+t).classList.toggle('active',t===n);});}
+function buildBlobCatChips(){const w=document.getElementById('blobCatChips');w.innerHTML='';Object.keys(BLOB_CATS).forEach(cat=>{const d=document.createElement('div');d.className='chip'+(cat===blobActiveCat?' active':'');d.textContent=cat;d.onclick=()=>{blobActiveCat=cat;buildBlobCatChips();buildBlobTplGrid(document.getElementById('blobSearch').value);};w.appendChild(d);});}
+function buildBlobTplGrid(filter=''){const g=document.getElementById('blobTplGrid');g.innerHTML='';const allowed=BLOB_CATS[blobActiveCat],f=(filter||'').toLowerCase();const shown=BLOB_TEMPLATES.filter(tp=>{if(allowed&&!allowed.includes(tp.base))return false;if(f&&!tp.name.toLowerCase().includes(f))return false;return true;});document.getElementById('blobTplCount').textContent=shown.length;shown.forEach(tp=>{const d=document.createElement('div');d.className='preset-card'+(tp.id===blobP.template?' active':'');d.innerHTML=`<div class="preset-name">${tp.name}</div><div class="preset-desc">${tp.desc}</div>`;d.onclick=()=>{blobP.template=tp.id;blobP.base=tp.base;document.getElementById('blobTplBadge').textContent=tp.name;buildBlobTplGrid(document.getElementById('blobSearch').value);initBlobScene();};g.appendChild(d);});}
+function buildBlobDirGrid(){const g=document.getElementById('blobDirGrid');g.innerHTML='';BLOB_DIRS.forEach(dr=>{const d=document.createElement('div');d.className='dir-btn'+(dr.id===blobP.direction?' active':'');d.textContent=dr.n;d.onclick=()=>{blobP.direction=dr.id;buildBlobDirGrid();initBlobScene();};g.appendChild(d);});}
+function buildBlobSwatches(){buildSwatches('blobSwatches',blobP.colors,buildBlobSwatches);}
+function buildBlobPaletteChips(){buildChips('blobPaletteChips',(n)=>{blobP.colors=[...PALETTES[n]];buildBlobSwatches();});}
+function updateBlob(k,v){blobP[k]=v;const el=document.getElementById('bval-'+k);if(el)el.textContent=Number.isInteger(v)?v:(+v).toFixed(1);if(k==='count'||k==='size')initBlobScene();}
+function randomizeBlob(){const tp=pick(BLOB_TEMPLATES);blobP.template=tp.id;blobP.base=tp.base;blobP.direction=pick(BLOB_DIRS).id;blobP.count=Math.floor(rand(4,18));blobP.size=Math.floor(rand(80,220));blobP.speed=+rand(0.5,2.5).toFixed(1);blobP.wobble=+rand(0.2,0.9).toFixed(2);blobP.blur=Math.floor(rand(10,45));blobP.colors=[...PALETTES[pick(Object.keys(PALETTES))]];blobP.bgColor=hslToHex(Math.random()*360,40,5);syncBlobUI();initBlobScene();}
+function resetBlob(){blobP=JSON.parse(JSON.stringify(BLOB_DEFAULTS));blobActiveCat='All';syncBlobUI();buildBlobCatChips();initBlobScene();}
+function syncBlobUI(){['count','size','speed','wobble','blur'].forEach(k=>{const sl=document.getElementById('bsl-'+k);if(sl)sl.value=blobP[k];const vd=document.getElementById('bval-'+k);if(vd)vd.textContent=Number.isInteger(blobP[k])?blobP[k]:(+blobP[k]).toFixed(blobP[k]<1?2:1);});document.getElementById('blobBgColor').value=blobP.bgColor;const tp=BLOB_TEMPLATES.find(t=>t.id===blobP.template);document.getElementById('blobTplBadge').textContent=tp?tp.name:'';buildBlobTplGrid(document.getElementById('blobSearch')?document.getElementById('blobSearch').value:'');buildBlobDirGrid();buildBlobSwatches();}
+function updateBlobExport(k,v){blobExport[k]=v;const d=blobExport.duration,fps=blobExport.fps,res=blobExport.res,L={'480':'854×480','720':'1280×720','1080':'1920×1080','1440':'2560×1440','2160':'3840×2160'};document.getElementById('bexp-info').textContent=`${d}s · ${fps} FPS · ${L[res]} → ${Math.round(d*fps)} frames`;const wn=document.getElementById('bexp-warn');if(res==='2160'||res==='1440'){wn.style.display='block';wn.textContent='⚠ '+(res==='2160'?'4K':'2K')+' renders slowly.';}else wn.style.display='none';}
+let blobExporting=false;
+async function startBlobExport(){if(blobExporting)return;blobExporting=true;const btn=document.getElementById('blobExportBtn'),bar=document.getElementById('blobProgressBar'),prog=document.getElementById('blobProgress'),status=document.getElementById('blobExpStatus');btn.disabled=true;btn.textContent='Rendering…';bar.style.display='block';prog.style.width='0%';const sBW=bW,sBH=bH,savedScene=blobScene;await exportVideo({res:blobExport.res,fps:blobExport.fps,duration:blobExport.duration,quality:blobExport.quality,format:blobExport.format,filename:'blob-animation',ui:{prog,status},setupFn:(w,h)=>{bW=w;bH=h;initBlobScene(w,h);},drawFn:(c,t,w,h)=>{drawBlobFrame(c,t,w,h);},restoreFn:()=>{bW=sBW;bH=sBH;blobScene=savedScene;}});prog.style.width='100%';status.textContent='✓ Downloaded .'+blobExport.format.toUpperCase()+'!';setTimeout(()=>{bar.style.display='none';status.textContent='';},9000);btn.disabled=false;btn.textContent='Render & Download';blobExporting=false;}
+</script>
+<script>
+// ===== GRADIENT PAGE =====
+const GRAD_DEFAULTS={template:'mesh',speed:1.0,points:5,soft:0.7,grain:0.05,angle:45,colors:['#7c6fff','#ff6f91','#6fffd4','#ffd96f']};
+let gradP=JSON.parse(JSON.stringify(GRAD_DEFAULTS));
+const gradExport={res:'720',fps:30,duration:5,quality:'high',format:'webm'};
+const GRAD_TEMPLATES=[{id:'mesh',name:'Mesh',desc:'Floating color blobs'},{id:'linear',name:'Linear',desc:'Angled blend'},{id:'conic',name:'Conic',desc:'Rotating cone'},{id:'radial',name:'Radial',desc:'Center glow'},{id:'waves',name:'Wave Blend',desc:'Flowing bands'},{id:'aurora',name:'Aurora',desc:'Soft curtains'}];
+const gradCanvas=document.getElementById('gradCanvas');const gctx=gradCanvas.getContext('2d');
+let gW,gH,gradPlaying=true,gradTime=0,gradLastRAF=null;
+function resizeGrad(){const c=gradCanvas.parentElement;gW=c.clientWidth;gH=c.clientHeight;gradCanvas.width=gW;gradCanvas.height=gH;document.getElementById('gradDimBadge').textContent=`${gW}×${gH}`;}
+function drawGradFrame(c,t,W2,H2){const cols=gradP.colors,sp=gradP.speed,n=gradP.points,tpl=gradP.template;c.clearRect(0,0,W2,H2);c.fillStyle=cols[0];c.fillRect(0,0,W2,H2);
+  if(tpl==='mesh'){for(let i=0;i<n;i++){const a=t*0.0004*sp+i*1.7,x=W2/2+Math.cos(a)*W2*0.35,y=H2/2+Math.sin(a*1.2)*H2*0.35,r=Math.max(W2,H2)*0.5*gradP.soft;const cl=hexToRgb(cols[i%cols.length]);const gr=c.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,`rgba(${cl.r},${cl.g},${cl.b},0.9)`);gr.addColorStop(1,`rgba(${cl.r},${cl.g},${cl.b},0)`);c.fillStyle=gr;c.fillRect(0,0,W2,H2);}}
+  else if(tpl==='linear'){const ang=(gradP.angle+t*0.01*sp)*Math.PI/180,gl=c.createLinearGradient(W2/2-Math.cos(ang)*W2,H2/2-Math.sin(ang)*H2,W2/2+Math.cos(ang)*W2,H2/2+Math.sin(ang)*H2);cols.forEach((col,i)=>gl.addColorStop(i/(cols.length-1||1),col));c.fillStyle=gl;c.fillRect(0,0,W2,H2);}
+  else if(tpl==='radial'){const gl=c.createRadialGradient(W2/2,H2/2,0,W2/2,H2/2,Math.max(W2,H2)*0.7);cols.forEach((col,i)=>gl.addColorStop(Math.min(1,i/(cols.length-1||1)),col));c.fillStyle=gl;c.fillRect(0,0,W2,H2);}
+  else if(tpl==='conic'){c.save();c.translate(W2/2,H2/2);c.rotate(t*0.0003*sp);for(let i=0;i<cols.length;i++){const a1=(i/cols.length)*6.28,a2=((i+1)/cols.length)*6.28;c.beginPath();c.moveTo(0,0);c.arc(0,0,Math.max(W2,H2),a1,a2);c.closePath();c.fillStyle=cols[i];c.fill();}c.restore();}
+  else if(tpl==='waves'){for(let i=0;i<cols.length;i++){const cl=hexToRgb(cols[i]);const yB=H2*(i/(cols.length));c.beginPath();c.moveTo(0,yB);for(let x=0;x<=W2;x+=4)c.lineTo(x,yB+Math.sin(x*0.005+t*0.0008*sp+i)*H2*0.18*gradP.soft);c.lineTo(W2,H2);c.lineTo(0,H2);c.closePath();c.fillStyle=`rgba(${cl.r},${cl.g},${cl.b},0.6)`;c.fill();}}
+  else{for(let i=0;i<cols.length;i++){const cl=hexToRgb(cols[i]);const yB=H2*(0.2+i*0.13);const gl=c.createLinearGradient(0,yB-120,0,yB+120);gl.addColorStop(0,`rgba(${cl.r},${cl.g},${cl.b},0)`);gl.addColorStop(0.5,`rgba(${cl.r},${cl.g},${cl.b},0.5)`);gl.addColorStop(1,`rgba(${cl.r},${cl.g},${cl.b},0)`);c.beginPath();c.moveTo(0,yB);for(let x=0;x<=W2;x+=4)c.lineTo(x,yB+Math.sin(x*0.004+t*0.0006*sp+i)*60);c.lineTo(W2,0);c.lineTo(0,0);c.closePath();c.fillStyle=gl;c.fill();}}
+  if(gradP.grain>0){c.save();c.globalAlpha=gradP.grain;for(let i=0;i<W2*H2/600;i++){c.fillStyle=Math.random()>0.5?'#fff':'#000';c.fillRect(Math.random()*W2,Math.random()*H2,1.5,1.5);}c.restore();}}
+function gradRender(rt){requestAnimationFrame(gradRender);if(currentPage!=='gradient'||!gradPlaying){gradLastRAF=rt;return;}const dt=gradLastRAF?Math.min(rt-gradLastRAF,100):16.67;gradLastRAF=rt;gradTime+=dt;document.getElementById('gradTimeDisplay').textContent=(gradTime/1000).toFixed(2)+'s';drawGradFrame(gctx,gradTime,gW,gH);}
+function toggleGradPlay(){gradPlaying=!gradPlaying;document.getElementById('gradPlayIcon').innerHTML=gradPlaying?'<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>':'<path d="M8 5v14l11-7z"/>';const sb=document.getElementById('gradStatusBadge');sb.textContent=gradPlaying?'LIVE':'PAUSED';sb.className='preview-badge'+(gradPlaying?' live live-dot':'');}
+function switchGradTab(n){['design','export'].forEach(t=>{document.getElementById('gpanel-'+t).style.display=t===n?'flex':'none';document.getElementById('gtab-'+t).classList.toggle('active',t===n);});}
+function buildGradTplGrid(){const g=document.getElementById('gradTplGrid');g.innerHTML='';GRAD_TEMPLATES.forEach(tp=>{const d=document.createElement('div');d.className='preset-card'+(tp.id===gradP.template?' active':'');d.innerHTML=`<div class="preset-name">${tp.name}</div><div class="preset-desc">${tp.desc}</div>`;d.onclick=()=>{gradP.template=tp.id;document.getElementById('gradTplBadge').textContent=tp.name;buildGradTplGrid();};g.appendChild(d);});}
+function buildGradSwatches(){buildSwatches('gradSwatches',gradP.colors,buildGradSwatches);}
+function buildGradPaletteChips(){buildChips('gradPaletteChips',(n)=>{gradP.colors=[...PALETTES[n]];buildGradSwatches();});}
+function updateGrad(k,v){gradP[k]=v;const el=document.getElementById('gval-'+k);if(el)el.textContent=Number.isInteger(v)?v:(+v).toFixed(2);}
+function randomizeGrad(){gradP.template=pick(GRAD_TEMPLATES).id;gradP.speed=+rand(0.4,2.5).toFixed(1);gradP.points=Math.floor(rand(3,9));gradP.soft=+rand(0.4,1).toFixed(2);gradP.grain=+rand(0,0.3).toFixed(2);gradP.angle=Math.floor(rand(0,360));gradP.colors=[...PALETTES[pick(Object.keys(PALETTES))]];syncGradUI();}
+function resetGrad(){gradP=JSON.parse(JSON.stringify(GRAD_DEFAULTS));syncGradUI();}
+function syncGradUI(){['speed','points','soft','grain','angle'].forEach(k=>{const sl=document.getElementById('gsl-'+k);if(sl)sl.value=gradP[k];const vd=document.getElementById('gval-'+k);if(vd)vd.textContent=Number.isInteger(gradP[k])?gradP[k]:(+gradP[k]).toFixed(2);});document.getElementById('gradTplBadge').textContent=(GRAD_TEMPLATES.find(t=>t.id===gradP.template)||{}).name||'';buildGradTplGrid();buildGradSwatches();}
+function updateGradExport(k,v){gradExport[k]=v;const d=gradExport.duration,fps=gradExport.fps,res=gradExport.res,L={'480':'854×480','720':'1280×720','1080':'1920×1080','1440':'2560×1440','2160':'3840×2160'};document.getElementById('gexp-info').textContent=`${d}s · ${fps} FPS · ${L[res]} → ${Math.round(d*fps)} frames`;const wn=document.getElementById('gexp-warn');if(res==='2160'||res==='1440'){wn.style.display='block';wn.textContent='⚠ '+(res==='2160'?'4K':'2K')+' renders slowly.';}else wn.style.display='none';}
+let gradExporting=false;
+async function startGradExport(){if(gradExporting)return;gradExporting=true;const btn=document.getElementById('gradExportBtn'),bar=document.getElementById('gradProgressBar'),prog=document.getElementById('gradProgress'),status=document.getElementById('gradExpStatus');btn.disabled=true;btn.textContent='Rendering…';bar.style.display='block';await exportVideo({res:gradExport.res,fps:gradExport.fps,duration:gradExport.duration,quality:gradExport.quality,format:gradExport.format,filename:'gradient',ui:{prog,status},drawFn:(c,t,w,h)=>drawGradFrame(c,t,w,h)});prog.style.width='100%';status.textContent='✓ Downloaded .'+gradExport.format.toUpperCase()+'!';setTimeout(()=>{bar.style.display='none';status.textContent='';},9000);btn.disabled=false;btn.textContent='Render & Download';gradExporting=false;}
+
+// ===== PATTERN PAGE =====
+const PAT_DEFAULTS={template:'dots',speed:1.0,size:40,thick:2,angle:0,bgColor:'#0a0a14',colors:['#7c6fff','#ff6f91','#6fffd4']};
+let patP=JSON.parse(JSON.stringify(PAT_DEFAULTS));
+const patExport={res:'720',fps:30,duration:5,quality:'high',format:'webm'};
+const PAT_TEMPLATES=[{id:'dots',name:'Dots',desc:'Pulsing dot grid'},{id:'grid',name:'Grid',desc:'Moving lines'},{id:'waves',name:'Waves',desc:'Stacked sine rows'},{id:'truchet',name:'Truchet',desc:'Random arc tiles'},{id:'tri',name:'Triangles',desc:'Triangle weave'},{id:'cross',name:'Crosses',desc:'Plus signs'},{id:'rings',name:'Rings',desc:'Concentric circles'},{id:'chevron',name:'Chevron',desc:'Zigzag rows'}];
+const patCanvas=document.getElementById('patCanvas');const pctx=patCanvas.getContext('2d');
+let pW,pH,patPlaying=true,patTime=0,patLastRAF=null;
+function resizePat(){const c=patCanvas.parentElement;pW=c.clientWidth;pH=c.clientHeight;patCanvas.width=pW;patCanvas.height=pH;document.getElementById('patDimBadge').textContent=`${pW}×${pH}`;}
+function patCol(i){const a=patP.colors;return a[((i%a.length)+a.length)%a.length];}
+function drawPatFrame(c,t,W2,H2){c.clearRect(0,0,W2,H2);c.fillStyle=patP.bgColor;c.fillRect(0,0,W2,H2);const s=patP.size,sp=patP.speed,th=patP.thick,off=t*0.03*sp;c.save();c.translate(W2/2,H2/2);c.rotate(patP.angle*Math.PI/180);c.translate(-W2/2,-H2/2);const tpl=patP.template;
+  if(tpl==='dots'){for(let y=0;y<=H2+s;y+=s)for(let x=0;x<=W2+s;x+=s){const r=th*0.8*(0.6+0.4*Math.sin(x*0.05+y*0.05+t*0.003*sp));c.beginPath();c.arc(x,y,Math.max(0.5,r),0,6.28);c.fillStyle=patCol(Math.floor((x+y)/s));c.fill();}}
+  else if(tpl==='grid'){c.lineWidth=th;for(let x=(-off%s);x<=W2;x+=s){c.strokeStyle=patCol(x/s|0);c.beginPath();c.moveTo(x,0);c.lineTo(x,H2);c.stroke();}for(let y=(off%s);y<=H2;y+=s){c.strokeStyle=patCol(y/s|0);c.beginPath();c.moveTo(0,y);c.lineTo(W2,y);c.stroke();}}
+  else if(tpl==='waves'){c.lineWidth=th;for(let row=0;row<=H2/s;row++){c.beginPath();for(let x=0;x<=W2;x+=4)c.lineTo(x,row*s+Math.sin(x*0.03+t*0.004*sp+row)*s*0.4);c.strokeStyle=patCol(row);c.stroke();}}
+  else if(tpl==='truchet'){c.lineWidth=th;for(let y=0;y<=H2;y+=s)for(let x=0;x<=W2;x+=s){const r=(Math.sin(x*12.9+y*78.2)*43758.5)%1;c.strokeStyle=patCol((x+y)/s|0);c.beginPath();if((r>0?r:-r)<0.5){c.arc(x,y,s/2,0,Math.PI/2);c.moveTo(x+s,y+s);c.arc(x+s,y+s,s/2,Math.PI,Math.PI*1.5);}else{c.arc(x+s,y,s/2,Math.PI/2,Math.PI);c.moveTo(x,y+s);c.arc(x,y+s,s/2,Math.PI*1.5,0);}c.stroke();}}
+  else if(tpl==='tri'){c.lineWidth=th;for(let y=0;y<=H2;y+=s)for(let x=0;x<=W2;x+=s){c.strokeStyle=patCol((x+y)/s|0);c.beginPath();c.moveTo(x,y);c.lineTo(x+s,y);c.lineTo(x,y+s);c.closePath();c.stroke();}}
+  else if(tpl==='cross'){for(let y=s/2;y<=H2;y+=s)for(let x=s/2;x<=W2;x+=s){const a=0.5+0.5*Math.sin(x*0.04+y*0.04+t*0.003*sp);c.strokeStyle=patCol((x+y)/s|0);c.lineWidth=th;c.beginPath();c.moveTo(x-s*0.3*a,y);c.lineTo(x+s*0.3*a,y);c.moveTo(x,y-s*0.3*a);c.lineTo(x,y+s*0.3*a);c.stroke();}}
+  else if(tpl==='rings'){c.lineWidth=th;for(let y=s;y<=H2;y+=s*1.5)for(let x=s;x<=W2;x+=s*1.5){const r=(s*0.4)*(0.6+0.4*Math.sin(x*0.03+t*0.003*sp));c.strokeStyle=patCol((x+y)/s|0);c.beginPath();c.arc(x,y,Math.max(1,r),0,6.28);c.stroke();}}
+  else{c.lineWidth=th;for(let row=0;row<=H2/s;row++){c.strokeStyle=patCol(row);c.beginPath();for(let x=0;x<=W2;x+=s){const yy=row*s+((Math.floor(x/s)+Math.floor(off/s))%2?s*0.3:-s*0.3);c.lineTo(x,yy);c.lineTo(x+s/2,row*s);}c.stroke();}}
+  c.restore();}
+function patRender(rt){requestAnimationFrame(patRender);if(currentPage!=='pattern'||!patPlaying){patLastRAF=rt;return;}const dt=patLastRAF?Math.min(rt-patLastRAF,100):16.67;patLastRAF=rt;patTime+=dt;document.getElementById('patTimeDisplay').textContent=(patTime/1000).toFixed(2)+'s';drawPatFrame(pctx,patTime,pW,pH);}
+function togglePatPlay(){patPlaying=!patPlaying;document.getElementById('patPlayIcon').innerHTML=patPlaying?'<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>':'<path d="M8 5v14l11-7z"/>';const sb=document.getElementById('patStatusBadge');sb.textContent=patPlaying?'LIVE':'PAUSED';sb.className='preview-badge'+(patPlaying?' live live-dot':'');}
+function switchPatTab(n){['design','export'].forEach(t=>{document.getElementById('ppanel-'+t).style.display=t===n?'flex':'none';document.getElementById('ptab-'+t).classList.toggle('active',t===n);});}
+function buildPatTplGrid(){const g=document.getElementById('patTplGrid');g.innerHTML='';PAT_TEMPLATES.forEach(tp=>{const d=document.createElement('div');d.className='preset-card'+(tp.id===patP.template?' active':'');d.innerHTML=`<div class="preset-name">${tp.name}</div><div class="preset-desc">${tp.desc}</div>`;d.onclick=()=>{patP.template=tp.id;document.getElementById('patTplBadge').textContent=tp.name;buildPatTplGrid();};g.appendChild(d);});}
+function buildPatSwatches(){buildSwatches('patSwatches',patP.colors,buildPatSwatches);}
+function buildPatPaletteChips(){buildChips('patPaletteChips',(n)=>{patP.colors=[...PALETTES[n]];buildPatSwatches();});}
+function updatePat(k,v){patP[k]=v;const el=document.getElementById('pval-'+k);if(el)el.textContent=Number.isInteger(v)?v:(+v).toFixed(1);}
+function randomizePat(){patP.template=pick(PAT_TEMPLATES).id;patP.speed=+rand(0.2,3).toFixed(1);patP.size=Math.floor(rand(20,100));patP.thick=+rand(1,8).toFixed(1);patP.angle=Math.floor(rand(0,360));patP.colors=[...PALETTES[pick(Object.keys(PALETTES))]];patP.bgColor=hslToHex(Math.random()*360,30,6);syncPatUI();}
+function resetPat(){patP=JSON.parse(JSON.stringify(PAT_DEFAULTS));syncPatUI();}
+function syncPatUI(){['speed','size','thick','angle'].forEach(k=>{const sl=document.getElementById('psl-'+k);if(sl)sl.value=patP[k];const vd=document.getElementById('pval-'+k);if(vd)vd.textContent=Number.isInteger(patP[k])?patP[k]:(+patP[k]).toFixed(1);});document.getElementById('patBgColor').value=patP.bgColor;document.getElementById('patTplBadge').textContent=(PAT_TEMPLATES.find(t=>t.id===patP.template)||{}).name||'';buildPatTplGrid();buildPatSwatches();}
+function updatePatExport(k,v){patExport[k]=v;const d=patExport.duration,fps=patExport.fps,res=patExport.res,L={'480':'854×480','720':'1280×720','1080':'1920×1080','1440':'2560×1440','2160':'3840×2160'};document.getElementById('pexp-info').textContent=`${d}s · ${fps} FPS · ${L[res]} → ${Math.round(d*fps)} frames`;const wn=document.getElementById('pexp-warn');if(res==='2160'||res==='1440'){wn.style.display='block';wn.textContent='⚠ '+(res==='2160'?'4K':'2K')+' renders slowly.';}else wn.style.display='none';}
+let patExporting=false;
+async function startPatExport(){if(patExporting)return;patExporting=true;const btn=document.getElementById('patExportBtn'),bar=document.getElementById('patProgressBar'),prog=document.getElementById('patProgress'),status=document.getElementById('patExpStatus');btn.disabled=true;btn.textContent='Rendering…';bar.style.display='block';await exportVideo({res:patExport.res,fps:patExport.fps,duration:patExport.duration,quality:patExport.quality,format:patExport.format,filename:'pattern',ui:{prog,status},drawFn:(c,t,w,h)=>drawPatFrame(c,t,w,h)});prog.style.width='100%';status.textContent='✓ Downloaded .'+patExport.format.toUpperCase()+'!';setTimeout(()=>{bar.style.display='none';status.textContent='';},9000);btn.disabled=false;btn.textContent='Render & Download';patExporting=false;}
+
+// ===== PARTICLE LAB PAGE =====
+const PL_DEFAULTS={template:'flow',count:300,speed:1.0,size:2,trail:0.9,force:1.0,bgColor:'#05050c',colors:['#7c6fff','#ff6f91','#6fffd4','#ffd96f']};
+let plP=JSON.parse(JSON.stringify(PL_DEFAULTS));
+const plExport={res:'720',fps:30,duration:5,quality:'high',format:'webm'};
+const PL_TEMPLATES=[{id:'flow',name:'Flow Field',desc:'Noise-driven streams'},{id:'gravity',name:'Gravity',desc:'Falling with bounce'},{id:'attract',name:'Attractor',desc:'Pulled to center'},{id:'repel',name:'Repeller',desc:'Pushed from center'},{id:'orbit',name:'Orbit',desc:'Circular paths'},{id:'swarm',name:'Swarm',desc:'Wandering cloud'},{id:'fountain',name:'Fountain',desc:'Upward burst'},{id:'spiral',name:'Spiral',desc:'Spinning outward'}];
+const plCanvas=document.getElementById('plCanvas');const plctx=plCanvas.getContext('2d');
+let plW,plH,plPlaying=true,plTime=0,plLastRAF=null,plScene=[];
+function resizePl(){const c=plCanvas.parentElement;plW=c.clientWidth;plH=c.clientHeight;plCanvas.width=plW;plCanvas.height=plH;document.getElementById('plDimBadge').textContent=`${plW}×${plH}`;plctx.fillStyle=plP.bgColor;plctx.fillRect(0,0,plW,plH);initPlScene();}
+function plCol(i){const a=plP.colors;return a[((i%a.length)+a.length)%a.length];}
+function newPl(W2,H2){return{x:Math.random()*(W2||plW),y:Math.random()*(H2||plH),vx:0,vy:0,ci:Math.floor(Math.random()*plP.colors.length),life:Math.random()};}
+function initPlScene(w,h){const W2=w||plW,H2=h||plH;plScene=[];for(let i=0;i<plP.count;i++)plScene.push(newPl(W2,H2));}
+function stepPl(p,t,W2,H2){const sp=plP.speed,F=plP.force,tpl=plP.template,cx=W2/2,cy=H2/2;
+  if(tpl==='flow'){const a=simplex2(p.x*0.002+t*0.0002,p.y*0.002)*6.28;p.vx=Math.cos(a)*sp;p.vy=Math.sin(a)*sp;}
+  else if(tpl==='gravity'){p.vy+=0.05*F*sp;p.vx*=0.99;if(p.y>H2){p.y=H2;p.vy*=-0.6;}}
+  else if(tpl==='attract'){const dx=cx-p.x,dy=cy-p.y,d=Math.hypot(dx,dy)||1;p.vx+=dx/d*0.1*F;p.vy+=dy/d*0.1*F;p.vx*=0.97;p.vy*=0.97;}
+  else if(tpl==='repel'){const dx=p.x-cx,dy=p.y-cy,d=Math.hypot(dx,dy)||1;p.vx+=dx/d*0.15*F;p.vy+=dy/d*0.15*F;p.vx*=0.98;p.vy*=0.98;}
+  else if(tpl==='orbit'){const dx=p.x-cx,dy=p.y-cy;p.vx=-dy*0.01*sp;p.vy=dx*0.01*sp;}
+  else if(tpl==='swarm'){p.vx+=(simplex2(p.x*0.01,t*0.001)*0.3)*sp;p.vy+=(simplex2(p.y*0.01,t*0.001+5)*0.3)*sp;p.vx*=0.95;p.vy*=0.95;}
+  else if(tpl==='fountain'){if(p.life<=0||p.y>H2){p.x=cx+rand(-20,20);p.y=H2;p.vx=rand(-2,2)*sp;p.vy=-rand(4,8)*sp;p.life=1;}p.vy+=0.08*F*sp;p.life-=0.005;}
+  else{const dx=p.x-cx,dy=p.y-cy,d=Math.hypot(dx,dy)||1,a=Math.atan2(dy,dx)+0.03*sp;p.x=cx+Math.cos(a)*(d+0.5*sp);p.y=cy+Math.sin(a)*(d+0.5*sp);}
+  if(tpl!=='spiral'&&tpl!=='orbit'){p.x+=p.vx;p.y+=p.vy;}
+  if(p.x<0)p.x=W2;if(p.x>W2)p.x=0;if(p.y<0&&tpl!=='gravity'&&tpl!=='fountain')p.y=H2;if(p.y>H2&&tpl!=='gravity'&&tpl!=='fountain')p.y=0;}
+function drawPlFrame(c,t,W2,H2){c.globalAlpha=1;c.fillStyle=plP.bgColor;c.save();c.globalAlpha=1-plP.trail;c.fillRect(0,0,W2,H2);c.restore();const sz=plP.size;plScene.forEach(p=>{stepPl(p,t,W2,H2);const cl=hexToRgb(plCol(p.ci));c.beginPath();c.arc(p.x,p.y,sz,0,6.28);c.fillStyle=`rgba(${cl.r},${cl.g},${cl.b},0.85)`;c.fill();});}
+function plRender(rt){requestAnimationFrame(plRender);if(currentPage!=='particle'||!plPlaying){plLastRAF=rt;return;}const dt=plLastRAF?Math.min(rt-plLastRAF,100):16.67;plLastRAF=rt;plTime+=dt;document.getElementById('plTimeDisplay').textContent=(plTime/1000).toFixed(2)+'s';drawPlFrame(plctx,plTime,plW,plH);}
+function togglePlPlay(){plPlaying=!plPlaying;document.getElementById('plPlayIcon').innerHTML=plPlaying?'<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>':'<path d="M8 5v14l11-7z"/>';const sb=document.getElementById('plStatusBadge');sb.textContent=plPlaying?'LIVE':'PAUSED';sb.className='preview-badge'+(plPlaying?' live live-dot':'');}
+function switchPlTab(n){['design','export'].forEach(t=>{document.getElementById('plpanel-'+t).style.display=t===n?'flex':'none';document.getElementById('pltab-'+t).classList.toggle('active',t===n);});}
+function buildPlTplGrid(){const g=document.getElementById('plTplGrid');g.innerHTML='';PL_TEMPLATES.forEach(tp=>{const d=document.createElement('div');d.className='preset-card'+(tp.id===plP.template?' active':'');d.innerHTML=`<div class="preset-name">${tp.name}</div><div class="preset-desc">${tp.desc}</div>`;d.onclick=()=>{plP.template=tp.id;document.getElementById('plTplBadge').textContent=tp.name;buildPlTplGrid();initPlScene();};g.appendChild(d);});}
+function buildPlSwatches(){buildSwatches('plSwatches',plP.colors,buildPlSwatches);}
+function buildPlPaletteChips(){buildChips('plPaletteChips',(n)=>{plP.colors=[...PALETTES[n]];buildPlSwatches();});}
+function updatePl(k,v){plP[k]=v;const el=document.getElementById('plval-'+k);if(el)el.textContent=Number.isInteger(v)?v:(+v).toFixed(k==='trail'?2:1);if(k==='count')initPlScene();}
+function randomizePl(){plP.template=pick(PL_TEMPLATES).id;plP.count=Math.floor(rand(150,800));plP.speed=+rand(0.5,2.5).toFixed(1);plP.size=+rand(1,5).toFixed(1);plP.trail=+rand(0.8,0.97).toFixed(2);plP.force=+rand(0.5,2.5).toFixed(1);plP.colors=[...PALETTES[pick(Object.keys(PALETTES))]];plP.bgColor=hslToHex(Math.random()*360,40,5);syncPlUI();initPlScene();}
+function resetPl(){plP=JSON.parse(JSON.stringify(PL_DEFAULTS));syncPlUI();initPlScene();}
+function syncPlUI(){['count','speed','size','trail','force'].forEach(k=>{const sl=document.getElementById('plsl-'+k);if(sl)sl.value=plP[k];const vd=document.getElementById('plval-'+k);if(vd)vd.textContent=Number.isInteger(plP[k])?plP[k]:(+plP[k]).toFixed(k==='trail'?2:1);});document.getElementById('plBgColor').value=plP.bgColor;document.getElementById('plTplBadge').textContent=(PL_TEMPLATES.find(t=>t.id===plP.template)||{}).name||'';buildPlTplGrid();buildPlSwatches();}
+function updatePlExport(k,v){plExport[k]=v;const d=plExport.duration,fps=plExport.fps,res=plExport.res,L={'480':'854×480','720':'1280×720','1080':'1920×1080','1440':'2560×1440','2160':'3840×2160'};document.getElementById('plexp-info').textContent=`${d}s · ${fps} FPS · ${L[res]} → ${Math.round(d*fps)} frames`;const wn=document.getElementById('plexp-warn');if(res==='2160'||res==='1440'){wn.style.display='block';wn.textContent='⚠ '+(res==='2160'?'4K':'2K')+' renders slowly.';}else wn.style.display='none';}
+let plExporting=false;
+async function startPlExport(){if(plExporting)return;plExporting=true;const btn=document.getElementById('plExportBtn'),bar=document.getElementById('plProgressBar'),prog=document.getElementById('plProgress'),status=document.getElementById('plExpStatus');btn.disabled=true;btn.textContent='Rendering…';bar.style.display='block';const sPW=plW,sPH=plH,savedScene=plScene;await exportVideo({res:plExport.res,fps:plExport.fps,duration:plExport.duration,quality:plExport.quality,format:plExport.format,filename:'particles',ui:{prog,status},setupFn:(w,h)=>{plW=w;plH=h;initPlScene(w,h);const cv2=document.createElement('canvas');},drawFn:(c,t,w,h)=>{if(t===0){c.fillStyle=plP.bgColor;c.fillRect(0,0,w,h);}drawPlFrame(c,t,w,h);},restoreFn:()=>{plW=sPW;plH=sPH;plScene=savedScene;}});prog.style.width='100%';status.textContent='✓ Downloaded .'+plExport.format.toUpperCase()+'!';setTimeout(()=>{bar.style.display='none';status.textContent='';},9000);btn.disabled=false;btn.textContent='Render & Download';plExporting=false;}
+
+// ===== SVG CODER PAGE =====
+const svgState={code:'',res:'1080',fps:30,duration:6,quality:'high',format:'mp4'};
+const SVG_SAMPLE=`<svg viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1920" height="1080" fill="#020617"/>
+  <style>
+    .neon-path{fill:none;stroke:#0ea5e9;stroke-width:8;stroke-dasharray:1000;stroke-dashoffset:1000;animation:draw 6s infinite ease-in-out;}
+    .pulse-core{fill:#10b981;transform-origin:center;animation:beat 6s infinite cubic-bezier(.4,0,.2,1);}
+    @keyframes draw{0%{stroke-dashoffset:1000;stroke:#0ea5e9}50%{stroke-dashoffset:0;stroke:#10b981}100%{stroke-dashoffset:1000;stroke:#0ea5e9}}
+    @keyframes beat{0%{transform:scale(.8) rotate(0)}50%{transform:scale(1.5) rotate(180deg)}100%{transform:scale(.8) rotate(360deg)}}
+  </style>
+  <g transform="translate(960,540)">
+    <circle class="neon-path" cx="0" cy="0" r="300"/>
+    <rect class="pulse-core" x="-75" y="-75" width="150" height="150" rx="30"/>
+  </g>
+</svg>`;
+function switchSvgTab(t){['source','export'].forEach(x=>{document.getElementById('svtab-'+x).classList.toggle('active',x===t);document.getElementById('svpanel-'+x).style.display=x===t?'':'none';});}
+function loadSvgSample(){document.getElementById('svgCodeInput').value=SVG_SAMPLE;renderSvgPreview();}
+function renderSvgPreview(){const code=document.getElementById('svgCodeInput').value.trim();svgState.code=code;const box=document.getElementById('svgPreview');box.innerHTML=code||'<div style="color:#64748b;font-size:12px">Paste your SVG code in the sidebar →</div>';const sv=box.querySelector('svg');if(sv){sv.style.maxWidth='100%';sv.style.maxHeight='100%';sv.style.width='auto';sv.style.height='auto';document.getElementById('svgInfoDisplay').textContent=(sv.getAttribute('viewBox')||(sv.getAttribute('width')+'×'+sv.getAttribute('height'))||'SVG loaded');document.getElementById('svgDimBadge').textContent=(sv.getAttribute('viewBox')||'').split(' ').slice(2).join('×')||'SVG';}else{document.getElementById('svgInfoDisplay').textContent='Paste SVG →';}}
+function restartSvg(){renderSvgPreview();}
+document.addEventListener('DOMContentLoaded',()=>{const ta=document.getElementById('svgCodeInput');if(ta){ta.value=SVG_SAMPLE;let tm;ta.addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(renderSvgPreview,250);});renderSvgPreview();}});
+function updateSvgExport(k,v){svgState[k]=v;const L={'480':'854×480','720':'1280×720','1080':'1920×1080','1440':'2560×1440','2160':'3840×2160'};document.getElementById('svexp-info').textContent=`${svgState.duration}s · ${svgState.fps} FPS · ${L[svgState.res]}`;const wn=document.getElementById('svexp-warn');if(svgState.format!=='webm' && !pickSvgMp4Mime()){wn.style.display='block';wn.textContent='⚠ This browser cannot record MP4 directly. Will fall back to WebM. Use latest Chrome/Edge for MP4/MOV.';}else if(svgState.res==='2160'||svgState.res==='1440'){wn.style.display='block';wn.textContent='⚠ High resolution recordings are CPU-heavy.';}else{wn.style.display='none';}}
+function pickSvgMp4Mime(){const c=['video/mp4;codecs=avc1.640034','video/mp4;codecs=avc1.640028','video/mp4;codecs=avc1.42E01F','video/mp4;codecs=avc1.42001E','video/mp4'];for(const m of c){try{if(MediaRecorder.isTypeSupported(m))return m;}catch(e){}}return null;}
+function pickSvgWebmMime(){for(const m of ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm']){try{if(MediaRecorder.isTypeSupported(m))return m;}catch(e){}}return 'video/webm';}
+let svgExporting=false;
+function svgWaitForPaint(){return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));}
+function svgGetAllAnimations(root){
+  try{
+    if(root && typeof root.getAnimations==='function') return root.getAnimations({subtree:true});
+  }catch(e){}
+  try{
+    return document.getAnimations().filter(anim=>{
+      const target=anim && anim.effect ? anim.effect.target : null;
+      return !!(target && root && (target===root || (root.contains && root.contains(target))));
+    });
+  }catch(e){}
+  return [];
+}
+function svgRememberAnimations(root){
+  return svgGetAllAnimations(root).map(anim=>({
+    anim,
+    currentTime:typeof anim.currentTime==='number'?anim.currentTime:null,
+    playbackRate:typeof anim.playbackRate==='number'?anim.playbackRate:1,
+    playState:anim.playState||'running'
+  }));
+}
+async function svgSeekCssAnimations(root, ms){
+  const anims=svgGetAllAnimations(root);
+  for(const anim of anims){ try{ anim.pause(); }catch(e){} }
+  for(const anim of anims){ try{ anim.currentTime=ms; }catch(e){} }
+  await svgWaitForPaint();
+}
+function svgRestoreAnimations(snapshot){
+  for(const item of snapshot||[]){
+    const anim=item.anim;
+    if(!anim) continue;
+    try{ anim.playbackRate=item.playbackRate; }catch(e){}
+    try{ if(item.currentTime!=null) anim.currentTime=item.currentTime; }catch(e){}
+    try{ if(item.playState==='paused') anim.pause(); else anim.play(); }catch(e){}
+  }
+}
+// Inline computed CSS styles from source into clone — bakes current CSS-animation state.
+// Walks src + dst trees in parallel (same structure since clone was deep-cloned).
+function svgInlineComputedStyles(srcRoot, dstRoot){
+  const srcAll=[srcRoot, ...srcRoot.querySelectorAll('*')];
+  const dstAll=[dstRoot, ...dstRoot.querySelectorAll('*')];
+  const n=Math.min(srcAll.length,dstAll.length);
+  // Properties that matter for SVG visual state; copying ALL props bloats output 50x and slows encoding.
+  const KEEP=['fill','fill-opacity','stroke','stroke-opacity','stroke-width','stroke-dasharray','stroke-dashoffset','stroke-linecap','stroke-linejoin','opacity','transform','transform-origin','transform-box','visibility','display','filter','mix-blend-mode','clip-path','mask','color','font-family','font-size','font-weight','font-style','text-anchor','letter-spacing','paint-order'];
+  for(let i=0;i<n;i++){
+    const s=srcAll[i]; if(!(s instanceof Element)) continue;
+    const cs=getComputedStyle(s);
+    let style='';
+    for(const p of KEEP){
+      const v=cs.getPropertyValue(p);
+      if(v && v!=='none' && v!=='normal' && v!=='auto') style+=`${p}:${v};`;
+    }
+    if(style) dstAll[i].setAttribute('style', (dstAll[i].getAttribute('style')||'')+style);
+  }
+}
+
+// Bake SMIL animVal → baseVal at the current pausedTime for the cloned tree.
+function svgBakeSMIL(srcRoot, dstRoot){
+  const srcAll=srcRoot.querySelectorAll('*');
+  const dstAll=dstRoot.querySelectorAll('*');
+  const n=Math.min(srcAll.length,dstAll.length);
+  for(let i=0;i<n;i++){
+    const s=srcAll[i], d=dstAll[i];
+    if(!s.attributes) continue;
+    for(const attr of s.attributes){
+      const name=attr.name;
+      // For animated attributes, getAttribute returns baseVal; the rendered value is in the property.
+      // Special-case transform via getCTM is too coarse; SMIL on transform is rare.
+      // Numeric attribute baking via animVal where available:
+      try{
+        const prop=s[name];
+        if(prop && typeof prop==='object' && 'animVal' in prop && 'baseVal' in prop){
+          const av=prop.animVal;
+          if(typeof av==='number' && av!==prop.baseVal){ d.setAttribute(name, String(av)); }
+          else if(av && typeof av.value==='number' && av.value!==prop.baseVal.value){ d.setAttribute(name, String(av.value)); }
+        }
+      }catch(e){}
+    }
+  }
+}
+
+async function startSvgExport(){
+  if(svgExporting)return;
+  const code=(document.getElementById('svgCodeInput').value||'').trim();
+  if(!code||code.indexOf('<svg')===-1){alert('Paste valid SVG code first.');return;}
+  svgExporting=true;
+  const btn=document.getElementById('svgExportBtn'),bar=document.getElementById('svgProgressBar'),prog=document.getElementById('svgProgress'),status=document.getElementById('svgExpStatus');
+  btn.disabled=true;btn.textContent='Rendering…';bar.style.display='block';prog.style.width='0%';status.textContent='Preparing…';
+  const[W,H]=RES_MAP[svgState.res]||[1920,1080];
+  const fps=svgState.fps, duration=svgState.duration, bitrate=bitrateFor(svgState.res,svgState.quality);
+  const totalFrames=Math.max(1, Math.round(fps*duration));
+
+  // Mount SVG INLINE in a visible offscreen container at full W×H so CSS keyframe animations tick.
+  const host=document.createElement('div');
+  host.style.cssText=`position:fixed;left:0;top:0;width:${W}px;height:${H}px;overflow:hidden;opacity:0.001;pointer-events:none;z-index:-1`;
+  host.innerHTML=code;
+  const svgEl=host.querySelector('svg');
+  if(!svgEl){alert('Invalid SVG.');btn.disabled=false;btn.textContent='Render & Download';bar.style.display='none';svgExporting=false;return;}
+  if(!svgEl.getAttribute('viewBox')){const w0=parseInt(svgEl.getAttribute('width'))||W,h0=parseInt(svgEl.getAttribute('height'))||H;svgEl.setAttribute('viewBox',`0 0 ${w0} ${h0}`);}
+  svgEl.setAttribute('width',W);svgEl.setAttribute('height',H);
+  svgEl.setAttribute('preserveAspectRatio','xMidYMid meet');
+  document.body.appendChild(host);
+  await svgWaitForPaint();
+
+  // Freeze SMIL so we can scrub deterministically.
+  try{ svgEl.pauseAnimations(); }catch(e){}
+  const svgAnimationSnapshot=svgRememberAnimations(svgEl);
+
+  // Try WebCodecs path (exact frame stamps → correct duration metadata; native MP4/MOV).
+  const wantMp4=(svgState.format==='mp4'||svgState.format==='mov');
+  const muxerOk = wantMp4 ? (typeof window.Mp4Muxer!=='undefined') : (typeof window.WebMMuxer!=='undefined');
+  const useWC = (typeof window.VideoEncoder==='function' && typeof window.VideoFrame==='function' && muxerOk);
+
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const c=cv.getContext('2d',{alpha:false, willReadFrequently:false});
+
+  // Snapshot the live SVG at time t (seconds) → drawn onto canvas `c`.
+  async function snapshotAtTime(t){
+    await svgSeekCssAnimations(svgEl, t*1000);
+    try{ svgEl.setCurrentTime(t); }catch(e){}
+    await svgWaitForPaint();
+    void svgEl.getBoundingClientRect();
+
+    // Clone and bake current animated state into the clone.
+    const clone=svgEl.cloneNode(true);
+    clone.setAttribute('xmlns','http://www.w3.org/2000/svg');
+    clone.setAttribute('width',W);clone.setAttribute('height',H);
+    svgInlineComputedStyles(svgEl, clone);
+    svgBakeSMIL(svgEl, clone);
+    // Strip <style>/<animate*>/<script> since state is now baked inline.
+    clone.querySelectorAll('style,animate,animateTransform,animateMotion,set,script').forEach(n=>n.remove());
+
+    const xml=new XMLSerializer().serializeToString(clone);
+    const blob=new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n'+xml],{type:'image/svg+xml;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    try{
+      const img=new Image();
+      img.decoding='sync';
+      img.src=url;
+      if(img.decode){ try{ await img.decode(); }catch(e){ await new Promise((r,j)=>{img.onload=r;img.onerror=j;}); } }
+      else { await new Promise((r,j)=>{img.onload=r;img.onerror=j;}); }
+      c.fillStyle='#000';c.fillRect(0,0,W,H);
+      c.drawImage(img,0,0,W,H);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  let outBlob=null, outExt='webm', outMime='video/webm', methodLabel='WebM';
+
+  try{
+    if(useWC){
+      const microPerFrame=Math.round(1_000_000/fps);
+      let muxer, encoder;
+      if(wantMp4){
+        const codec=await pickH264Codec(W,H,fps,bitrate);
+        muxer=new Mp4Muxer.Muxer({target:new Mp4Muxer.ArrayBufferTarget(),video:{codec:'avc',width:W,height:H,frameRate:fps},fastStart:'in-memory',firstTimestampBehavior:'offset'});
+        encoder=new VideoEncoder({output:(ch,m)=>muxer.addVideoChunk(ch,m),error:e=>console.error('Enc',e)});
+        encoder.configure({codec,width:W,height:H,bitrate,framerate:fps,avc:{format:'avc'}});
+        outExt=svgState.format==='mov'?'mov':'mp4';
+        outMime=svgState.format==='mov'?'video/quicktime':'video/mp4';
+        methodLabel=svgState.format==='mov'?'MOV (H.264)':'MP4 (H.264)';
+      } else {
+        const codec=await pickVP9Codec(W,H,fps,bitrate);
+        muxer=new WebMMuxer.Muxer({target:new WebMMuxer.ArrayBufferTarget(),video:{codec:'V_VP9',width:W,height:H,frameRate:fps},firstTimestampBehavior:'offset'});
+        encoder=new VideoEncoder({output:(ch,m)=>muxer.addVideoChunk(ch,m),error:e=>console.error('Enc',e)});
+        encoder.configure({codec,width:W,height:H,bitrate,framerate:fps});
+        outExt='webm';outMime='video/webm';methodLabel='WebM (VP9)';
+      }
+      const keyEvery=Math.max(1,Math.round(fps*2));
+      status.textContent=`Rendering ${duration}s · ${fps}fps · ${methodLabel}…`;
+      for(let f=0;f<totalFrames;f++){
+        const t=f/fps;
+        await snapshotAtTime(t);
+        const frame=new VideoFrame(cv,{timestamp:f*microPerFrame,duration:microPerFrame});
+        encoder.encode(frame,{keyFrame:f%keyEvery===0});
+        frame.close();
+        prog.style.width=((f+1)/totalFrames*94)+'%';
+        if(f%3===0) status.textContent=`Frame ${f+1} / ${totalFrames} · ${methodLabel}`;
+        if(encoder.encodeQueueSize>8){ while(encoder.encodeQueueSize>8) await new Promise(r=>setTimeout(r,4)); }
+        else if(f%2===0) await new Promise(r=>setTimeout(r,0));
+      }
+      status.textContent='Finalizing…';
+      await encoder.flush(); encoder.close(); muxer.finalize();
+      outBlob=new Blob([muxer.target.buffer],{type:outMime});
+    } else {
+      // Fallback: scrub-snapshot into a canvas, record via MediaRecorder timeslice — WebM only.
+      const mime=pickSvgWebmMime();
+      const stream=cv.captureStream(0);const track=stream.getVideoTracks()[0];
+      const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:bitrate});
+      const chunks=[];rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
+      const done=new Promise(r=>{rec.onstop=r;});
+      rec.start(200);
+      const msPerFrame=1000/fps;
+      const startWall=performance.now();
+      methodLabel='WebM (fallback)';
+      status.textContent=`Rendering ${duration}s @ ${fps}fps · ${methodLabel}…`;
+      for(let f=0;f<totalFrames;f++){
+        await snapshotAtTime(f/fps);
+        if(track.requestFrame) track.requestFrame();
+        prog.style.width=((f+1)/totalFrames*94)+'%';
+        if(f%3===0) status.textContent=`Frame ${f+1} / ${totalFrames}`;
+        const target=startWall+(f+1)*msPerFrame;
+        const wait=target-performance.now();
+        if(wait>0) await new Promise(r=>setTimeout(r,wait));
+      }
+      await new Promise(r=>setTimeout(r,150));
+      rec.stop(); await done;
+      outBlob=new Blob(chunks,{type:'video/webm'});
+      outExt='webm'; outMime='video/webm';
+      if(wantMp4) status.textContent='⚠ Browser lacks WebCodecs/Muxer — exported WebM. Use Chrome/Edge for MP4/MOV.';
+    }
+
+    const url=URL.createObjectURL(outBlob);
+    const a=document.createElement('a');a.href=url;a.download=`svg-anim-${duration}s-${H}p.${outExt}`;a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    prog.style.width='100%';
+    status.textContent=`✓ Downloaded .${outExt.toUpperCase()} · ${duration}s · ${fps}fps · ${methodLabel}`;
+  } catch(err){
+    console.error(err);
+    status.textContent='✗ Export failed: '+(err && err.message ? err.message : err);
+  } finally {
+    svgRestoreAnimations(svgAnimationSnapshot);
+    try{ svgEl.unpauseAnimations(); }catch(e){}
+    if(host.parentNode) host.parentNode.removeChild(host);
+    setTimeout(()=>{bar.style.display='none'; if(status.textContent.startsWith('✓')||status.textContent.startsWith('✗')||status.textContent.startsWith('⚠')) status.textContent='';},9000);
+    btn.disabled=false; btn.textContent='Render & Download'; svgExporting=false;
+  }
+}
+
+// ===== PAGE SWITCH + GLOBAL =====
+let currentPage='studio';
+function switchPage(p){currentPage=p;['studio','blob','gradient','pattern','particle','svg'].forEach(pg=>{const el=document.getElementById('page-'+pg);if(el)el.classList.toggle('active',pg===p);const nv=document.getElementById('nav-'+pg);if(nv)nv.classList.toggle('active',pg===p);});if(p==='studio')resizeCanvas();else if(p==='blob')resizeBlob();else if(p==='gradient')resizeGrad();else if(p==='pattern')resizePat();else if(p==='particle')resizePl();else if(p==='svg')renderSvgPreview();}
+function globalRandomize(){({studio:randomizeAnimation,blob:randomizeBlob,gradient:randomizeGrad,pattern:randomizePat,particle:randomizePl}[currentPage]||(()=>{}))();if(currentPage==='studio')randomizeColors();}
+function globalReset(){({studio:resetStudio,blob:resetBlob,gradient:resetGrad,pattern:resetPat,particle:resetPl}[currentPage]||(()=>{}))();}
+
+// ===== BOOT =====
+window.addEventListener('resize',()=>{if(currentPage==='studio')resizeCanvas();else if(currentPage==='blob')resizeBlob();else if(currentPage==='gradient')resizeGrad();else if(currentPage==='pattern')resizePat();else if(currentPage==='particle')resizePl();});
+// studio
+resizeCanvas();buildCatChips();buildPaletteChips();buildPresetGrid();buildColorSwatches();applyTemplate(TEMPLATES[0]);initParticles();updateExportParam('res','720');
+// blob
+resizeBlob();buildBlobCatChips();buildBlobTplGrid();buildBlobDirGrid();buildBlobSwatches();buildBlobPaletteChips();updateBlobExport('res','720');
+// gradient
+resizeGrad();buildGradTplGrid();buildGradSwatches();buildGradPaletteChips();updateGradExport('res','720');
+// pattern
+resizePat();buildPatTplGrid();buildPatSwatches();buildPatPaletteChips();updatePatExport('res','720');
+// particle
+resizePl();buildPlTplGrid();buildPlSwatches();buildPlPaletteChips();updatePlExport('res','720');
+// svg
+updateSvgExport('res','1080');
+// loops
+requestAnimationFrame(render);requestAnimationFrame(blobRender);requestAnimationFrame(gradRender);requestAnimationFrame(patRender);requestAnimationFrame(plRender);
+switchPage('studio');
+</script>
+</body>
+</html>
